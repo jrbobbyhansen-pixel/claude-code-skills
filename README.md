@@ -60,6 +60,8 @@ Enhancement build, **not** redesign (never tears down identity or information ar
 
 v1.1 (built by running ascend on itself) adds: **`--slate`** ideas-first mode — gate on the full scored slate *before* anything is built; a **`--snapshot`** isolation lane — safe for non-git targets and targets nested inside a larger repo, with per-pass snapshots and a scripted, dependency-preserving revert; and **prompt-artifact targets** — point ascend at a skill or prompt, not just an app, with live-fire verify tiers and class-gated state validation.
 
+v1.2 (same recursive session) replaces the divide-by-effort score as selector: candidates are now ranked by **impact = value × identity-fit × confidence** (RICE-style confidence locked to 1.0 verified/observed · 0.8 recalled · 0.5 hypothesis, and it must match the cited evidence), effort becomes a per-pass **weight-class budget** (S/M/L — ambition is a declared choice, not an automatic penalty), and every candidate killed by the bar rides to the gate as a visible **graveyard**. All of it machine-enforced: omitted confidence or weight-class on a modern record is a hard rejection, not a free maximum.
+
 **Use it when:** "make this world-class", "level this app up", "enrich it toward [billion-dollar competitor]".
 
 **Inside:** `SKILL.md` + 6 references (doctrine, exemplar patterns, goal-intake, loop mechanics, state schema, a full worked example pass) + 5 scripts (detect, init, new-pass, scan, state).

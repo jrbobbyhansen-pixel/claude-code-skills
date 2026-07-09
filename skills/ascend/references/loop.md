@@ -64,10 +64,13 @@ docs/help/changelog; tag `[PRINCIPLE]`/`[VERIFIED: source]` per doctrine § Cita
 gap qualitative.
 
 ### 2 · GAP
-Write the delta vs the exemplar. Build a **scored candidate list**: `score = user_value × identity_fit ÷ effort` (each
-1–5, anchors in doctrine § Value), each row justified against `goal.md`. Keep only candidates that **map to the locked
-job AND have user_value ≥ 4**; route redesign-class ideas to `deferred_redesign`. Pick the top item(s) that fit one
-reviewable pass.
+Write the delta vs the exemplar. Build a **scored candidate list** ranked by `impact = user_value × identity_fit ×
+confidence` (anchors + the three legal confidence values in doctrine § Value); report `score = impact ÷ effort` as the
+efficiency tiebreak, never the selector. Each row justified against `goal.md`, its confidence matched to the evidence
+actually cited. Keep candidates that **map to the locked job AND have user_value ≥ 4 AND fit the pass's weight class**
+(goal.md `ambition:`, overridable per pass); record every kill with its reason (`killed:`) — **the graveyard is
+presented at the slate/gate**, not silently dropped. Route redesign-class ideas to `deferred_redesign`. Pick the top
+item(s) by impact that fit one reviewable pass.
 
 ### 3 · BUILD
 `scripts/new-pass.sh <N> <axis-slug>` → branch `ascend/pass-<N>-<axis>` off integration; `.ascend/shots/pass-<N>/`

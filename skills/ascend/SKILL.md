@@ -1,7 +1,7 @@
 ---
 name: ascend
 description: Read an entire codebase, lock its purpose and users, then run a compounding enhancement-build loop (≥3 passes that escalate fidelity) that levels the app UP toward billion-dollar SaaS standards — adding capability, depth, and richness while preserving what the app already is. Each pass benchmarks the 2-3 best-in-class exemplars for THIS app's job (Asana for boards/movement, Linear for speed/triage, Stripe for forms/data, Notion for views, Figma for collaboration), researches their real patterns (hybrid: recall + web-verify, cited truthfully), scores quantified gaps, BUILDS the enhancement on an isolated branch in the app's own design language, verifies it actually works (tests + liveness + reachability), has an independent agent review it, then pauses for your diff review and carries the new state forward as the baseline for the next pass. Enhancement build, NOT redesign (never tears down identity/IA wholesale) and NOT mere polish (it adds real capability). Use when the user says "/ascend", wants to level an app up to best-in-class, "make it world-class", enrich features toward a billion-dollar competitor, or run an iterative build loop that compounds on itself.
-version: 1.1.0
+version: 1.2.0
 author: Bobby Hansen Jr. (bobbyhansenjr)
 license: CC0
 platforms: [linux, macos]
@@ -85,7 +85,7 @@ Each pass inherits the previous pass's accepted output as its new baseline. Pass
 
 ```
 1 BENCHMARK   read goal.md → pick 2-3 RELEVANT exemplars → research their real patterns (hybrid; cite truthfully)
-2 GAP         current vs exemplar → score candidates: value × identity-fit ÷ effort (each 1-5) → pick what clears the bar
+2 GAP         current vs exemplar → rank by impact = value × fit × confidence → record the kills → pick by impact
 3 BUILD       scripts/new-pass.sh → implement on the pass branch, in the app's OWN design language
 4 VERIFY      profile's typecheck/lint/build · run tests vs baseline · liveness (render/boot) · reachable in nav · record TIER
 5 CHECK       an independent agent (doctrine pasted) adversarially judges the 3 axes + citations — maker never grades itself
@@ -105,10 +105,13 @@ bootable target, say so at the gate.
 `read-only` — protocol in loop.md § VERIFY adapters. The same honesty law applies: a live-fired opening is not a
 live-fired full run; report what was actually exercised.
 
-## The value formula (fixed + measurable)
-`score = user_value × identity_fit ÷ effort`, each factor **1–5** (effort divides — higher effort *lowers* the score).
-Anchors in [`references/doctrine.md`](references/doctrine.md § Value). Bar to enter a pass: maps to the locked job in
-`goal.md` AND `user_value ≥ 4`. `state.py` computes and pins the score; "ranked by value" is arithmetic, not vibes.
+## The value formula (impact-ranked, confidence-weighted, ambition-budgeted)
+`impact = user_value × identity_fit × confidence` **ranks and selects** (confidence ∈ 1.0 verified/observed · 0.8
+recalled · 0.5 hypothesis — must match the cited evidence). `score = impact ÷ effort` is the efficiency tiebreak,
+never the selector. Effort is a per-pass **weight class** budget (S ≤2 · M ≤3 · L ≤5, goal.md `ambition:`) — ambition
+is chosen, not auto-penalized. Bar: maps to the locked job AND `user_value ≥ 4`; a chosen 0.5-confidence item is
+flagged verify-before-build. Killed candidates are recorded + shown (**the graveyard**). Anchors in
+[`references/doctrine.md`](references/doctrine.md § Value); `state.py` computes, enforces, and pins both numbers.
 
 ## Citation integrity (hardened — see doctrine § Citation)
 `[PRINCIPLE]` = unverified recall, safe only as a *general approach* (never a distinctive/recent specific).

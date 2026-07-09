@@ -7,8 +7,8 @@
 ```
 $ scripts/init.sh                      # gitignores .ascend/, stashes dirty tree, makes ascend/integration
 $ python3 scripts/detect.py . | tee .ascend/profile.json
-  → { "type":"react-native", "typecheck":"npx tsc --noEmit", "test":"npm run test",
-      "lint":"npm run lint", "launch_adapter":"render-test", "has_tests":true }
+  → { "type":"react-native", "target_class":"app", "typecheck":"npx tsc --noEmit",
+      "test":"npm run test", "lint":"npm run lint", "launch_adapter":"render-test", "has_tests":true }
 $ python3 scripts/scan.py .            # 1 slice, 9 UI files → MAP runs inline (no fan-out needed)
 $ python3 scripts/state.py init --scope "whole app" --loops 3 --stack react-native
 ```
@@ -24,6 +24,7 @@ Drafted from the code, confirmed with the user → `.ascend/goal.md`:
 purpose:  help solo founders triage their day's tasks fast
 user:     a busy founder · job: see what to do next and move it forward
 better:   speed + clarity
+ambition: M
 no_go:    keep the indigo brand, keep the minimal voice
 exemplars: Linear (triage/speed), Asana (board/movement), Things (native calm)
 inferred: user-confirmed
@@ -37,13 +38,16 @@ inferred: user-confirmed
   docs `[VERIFIED: https://linear.app/docs]`. (Did NOT quote any latency number — couldn't pull a sourced figure, so
   the gap stays qualitative.)
 
-**2 · GAP** (scored; effort divides)
-| Candidate | value | fit | effort | score | maps to goal? |
-|---|---|---|---|---|---|
-| Board view (status=column, drag) | 5 | 4 | 3 | **6.67** | ✅ "move it forward" |
-| Calendar view | 4 | 4 | 4 | 4.0 | ⚠️ secondary |
-| Realtime presence | 3 | 2 | 5 | 1.2 | ❌ solo user — DEFER |
-Bar to enter the pass: value ≥4 AND maps to locked job. **Build the board.** Presence → `deferred_redesign`/table.
+**2 · GAP** (ranked by impact = value × fit × confidence; score = impact ÷ effort is the tiebreak · pass weight
+class **M** from goal.md `ambition:` — chosen effort must be ≤3)
+| Candidate | value | fit | conf | **impact** | effort | score | verdict |
+|---|---|---|---|---|---|---|---|
+| Board view (status=column, drag) | 5 | 4 | 1.0 | **20.0** | 3 | 6.67 | ✅ chosen — "move it forward", Linear mechanism `[VERIFIED]` |
+| Calendar view | 4 | 4 | 0.8 | 12.8 | 4 | 3.2 | killed: effort 4 exceeds M budget — resubmit as an L pass or split |
+| Realtime presence | 3 | 2 | 0.5 | 3.0 | 5 | 0.6 | killed: solo-user app — fails the purpose gate |
+Bar: value ≥4 AND maps to locked job AND fits the weight class. Confidence matches the cited evidence (board need
+observed in the repo = 1.0; calendar = recalled pattern = 0.8; presence = hypothesis = 0.5). **Build the board.**
+The two kills ride to the gate as the graveyard; presence also logged to `deferred_redesign`.
 
 **3 · BUILD** (on its own branch, in the app's OWN visuals)
 ```

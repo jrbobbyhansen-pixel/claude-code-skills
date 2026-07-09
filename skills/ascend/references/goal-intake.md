@@ -20,6 +20,7 @@
 purpose:   <one sentence — what this app is FOR>
 user:      <primary user> · job: <their #1 job-to-be-done>
 better:    <what "better" means for THIS app — pick: speed | trust | safety | depth | delight | clarity | reach>
+ambition:  <default per-pass weight class: S (effort ≤2) | M (≤3) | L (≤5) — overridable per pass; see doctrine § Value>
 no_go:     <sacred/off-limits surfaces; brand elements that must not change; flows that must not move>
 exemplars: <which billion-$ products are RELEVANT to this app's job (overrides the generic exemplars.md picks)>
 inferred:  <true|false per field, or "user-confirmed">

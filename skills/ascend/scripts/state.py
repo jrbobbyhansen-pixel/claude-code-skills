@@ -22,6 +22,8 @@ TIERS = {"ran-in-app", "render-tested", "compiled-only",        # app targets
          "live-fired", "structure-linted", "read-only"}         # prompt-artifact targets
 TAGS = {"PRINCIPLE", "VERIFIED"}
 PHASES = {"skeleton", "refine", "detail"}
+CONFIDENCES = {1.0, 0.8, 0.5}          # verified/observed · recalled/inferred · hypothesis
+WEIGHT_CLASSES = {"S": 2, "M": 3, "L": 5}   # per-pass effort budget for chosen items
 
 
 def adir(root: Path) -> Path:
@@ -86,16 +88,62 @@ def validate_pass(rec: dict, st: dict) -> list:
         warns.append(f"pass {rec['n']}: lint is failing — clean it up before the gate")
     if rec.get("reachable") is False:
         fail(f"pass {rec['n']}: new surface is NOT reachable in the IA (orphaned screen)")
-    # value scores (effort DIVIDES) + entry-bar warning on the chosen item(s)
-    for b in rec.get("build_list", []):
+    # value math — impact = uv × fit × confidence RANKS; score = impact ÷ effort is the tiebreak.
+    # A record is v1.2-aware when ANY modern field appears; modern rules then apply record-wide,
+    # so scores can't be inflated by selectively omitting fields. Pure-v1 shapes stay valid (warned).
+    bl = rec.get("build_list", [])
+    wc = rec.get("weight_class")
+    aware = wc is not None or any(("confidence" in b) or ("killed" in b) for b in bl)
+    if wc is not None and wc not in WEIGHT_CLASSES:
+        fail(f"weight_class must be one of {sorted(WEIGHT_CLASSES)} (got {wc!r})")
+    if aware and wc is None:
+        fail(f"pass {rec['n']}: v1.2-format record must declare weight_class (S/M/L) — doctrine § Value")
+    budget = WEIGHT_CLASSES.get(wc) if wc else None
+    for b in bl:
         uv, idf, eff = b.get("user_value"), b.get("identity_fit"), b.get("effort")
         if not all(isinstance(x, int) and 1 <= x <= 5 for x in (uv, idf, eff)):
             fail(f"build item '{b.get('item')}' needs integer user_value/identity_fit/effort in 1..5")
-        b["score"] = round(uv * idf / eff, 2)
-    for b in [x for x in rec.get("build_list", []) if x.get("chosen")]:
+        conf = b.get("confidence")
+        if isinstance(conf, bool):
+            fail(f"build item '{b.get('item')}' confidence must be a number (1.0/0.8/0.5), not a boolean")
+        if conf is None:
+            if aware:
+                fail(f"build item '{b.get('item')}' missing confidence — a v1.2-format record must score "
+                     f"every row; omission is not a free 1.0 (doctrine § Value)")
+            conf = 1.0  # pure legacy record: exact v1 arithmetic preserved, but say so
+            warns.append(f"pass {rec['n']}: item '{b.get('item')}' has no confidence — scored as legacy (×1.0); "
+                         f"new records must justify confidence per doctrine § Value")
+        elif conf not in CONFIDENCES:
+            fail(f"build item '{b.get('item')}' confidence must be one of 1.0/0.8/0.5 (got {conf!r})")
+        killed = b.get("killed")
+        if killed is not None and (not isinstance(killed, str) or not killed.strip()):
+            fail(f"build item '{b.get('item')}' killed must be a non-empty reason string")
+        if killed and b.get("chosen"):
+            fail(f"build item '{b.get('item')}' is both killed and chosen — pick one")
+        b["impact"] = round(uv * idf * conf, 2)
+        b["score"] = round(uv * idf * conf / eff, 2)
+    has_verified_exemplar = any(e.get("tag") == "VERIFIED" for e in rec.get("exemplars", []))
+    for b in [x for x in bl if x.get("chosen")]:
         if b["user_value"] < 4:
             warns.append(f"pass {rec['n']}: chosen item '{b.get('item')}' has user_value "
                          f"{b['user_value']} < 4 — below the entry bar (see doctrine § Value)")
+        if b.get("confidence") == 0.5:
+            warns.append(f"pass {rec['n']}: chosen item '{b.get('item')}' is a HYPOTHESIS (confidence 0.5) — "
+                         f"verify the need before building, or accept the gamble explicitly at the gate")
+        if b.get("confidence") == 1.0 and not has_verified_exemplar:
+            warns.append(f"pass {rec['n']}: chosen item '{b.get('item')}' claims confidence 1.0 with no "
+                         f"[VERIFIED] exemplar on the pass — legitimate only if directly observed this run; "
+                         f"justify at the gate")
+        if budget is not None and b["effort"] > budget:
+            fail(f"pass {rec['n']}: chosen item '{b.get('item')}' effort {b['effort']} exceeds "
+                 f"weight class {wc} budget (≤{budget})")
+    chosen = [x for x in bl if x.get("chosen")]
+    benched = [x for x in bl if not x.get("chosen") and not x.get("killed")]
+    if chosen and benched:
+        cmax = max(c["impact"] for c in chosen)
+        for x in (x for x in benched if x["impact"] > cmax):
+            warns.append(f"pass {rec['n']}: benched item '{x.get('item')}' (impact {x['impact']}) outranks every "
+                         f"chosen item — kill it with a reason or justify the bench at the gate")
     # status/baseline coherence
     if rec["status"] == "accepted" and not rec.get("new_baseline"):
         fail(f"accepted pass {rec['n']} must record new_baseline")
@@ -169,6 +217,10 @@ def render(root: Path, st: dict):
                   f"lint={v.get('lint','?')} build={v.get('build','?')} tests={v.get('tests','?')} "
                   f"reachable={p.get('reachable','?')}")
         md.append(f"decisions: {p.get('decisions','')}")
+        killed = [b for b in p.get("build_list", []) if b.get("killed")]
+        if killed:
+            md.append("graveyard: " + "; ".join(
+                f"{b.get('item')} (impact {b.get('impact', '?')}) — {b['killed']}" for b in killed))
         md.append(f"new_baseline: {p.get('new_baseline') or '— (reverted)'}")
         if p.get("shots"):
             md.append(f"shots: {', '.join(p['shots'])}")

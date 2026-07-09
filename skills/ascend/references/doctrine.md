@@ -63,13 +63,22 @@ goal-lock this axis is unenforceable — Phase 0.5 is mandatory.) Also: anything
 purpose gate, route to `DEFERRED` — don't guess.
 
 ## Value (the only mechanism for choosing WHAT to build — make it real)
-`score = user_value × identity_fit ÷ effort` (effort **divides**; higher effort lowers the score). Each factor 1–5:
-- **user_value** — 5 = directly serves the locked #1 job in `goal.md`; 3 = helps a secondary job; 1 = tangential.
-- **identity_fit** — 5 = built entirely from existing tokens/components/voice; 3 = mostly; 1 = needs a new design language.
-- **effort** — 1 = low (≤1 file, no dep); 3 = medium; 5 = high (many files / new dep / new data path).
+**Selection metric:** `impact = user_value × identity_fit × confidence` — candidates are RANKED and CHOSEN by impact.
+**Efficiency metric:** `score = impact ÷ effort` — reported as the tiebreak between near-equal impacts, never the selector.
+- **user_value** (1–5, int) — 5 = directly serves the locked #1 job in `goal.md`; 3 = helps a secondary job; 1 = tangential.
+- **identity_fit** (1–5, int) — 5 = built entirely from existing tokens/components/voice; 1 = needs a new design language.
+- **confidence** (exactly one of — no other values exist): **1.0** = the need is `[VERIFIED]`-sourced or directly
+  observed this run · **0.8** = sound `[PRINCIPLE]` recall or strong inference · **0.5** = hypothesis. Confidence MUST
+  match the evidence actually cited on the row — a 1.0 without a source/observation is a CHECK finding, not a taste call.
+- **effort** (1–5, int) — does NOT divide the selector. Each pass declares a **weight class** — S (effort ≤2) ·
+  M (≤3) · L (≤5) — via goal.md `ambition:` or at pass start; chosen items must fit the class (state.py enforces).
+  Ambition is a declared choice, not an automatic penalty: an L pass of effort-4 items is legitimate if impact earns it.
 
-Every build-list row records the three numbers + a one-line justification tied to `goal.md`. **Bar to enter a pass:**
-maps to the locked job AND `user_value ≥ 4`. `scripts/state.py` computes and pins the score.
+Every build-list row records the numbers + a one-line justification tied to `goal.md`. **Bar to enter a pass:** maps
+to the locked job AND `user_value ≥ 4`. A chosen item at confidence 0.5 is flagged — verify the need first, or accept
+the gamble explicitly at the gate. **The graveyard is part of the deliverable:** every candidate that failed the bar
+is recorded (`killed: <reason>`) and shown at the slate/gate — a ranking is only trustworthy when the kills are
+visible. `scripts/state.py` computes, enforces, and pins impact + score.
 
 ## New code, surfaces, dependencies
 - **New code & surfaces are expected here** (the difference from `/polish`). Every new surface must (a) live within the
