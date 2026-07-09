@@ -32,7 +32,7 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/elon-audit`](skills/elon-audit/SKILL.md) | First-principles audit of 100% of a codebase | 1 file |
 | [`/feel`](skills/feel/SKILL.md) | Conform an app to a fixed interaction-feel standard | 6 files |
 | [`/gauntlet`](skills/gauntlet/SKILL.md) | Goal-anchored ship-readiness audit + fix plan | 32 files |
-| [`/grill-me`](skills/grill-me/SKILL.md) | Relentless plan interviewer | 1 file |
+| [`/grill-me`](skills/grill-me/SKILL.md) | Relentless plan interviewer + missed-idea surfacer | 1 file |
 | [`/loom`](skills/loom/SKILL.md) | Platform for self-running, verified quality loops | 40 files |
 | [`/polish`](skills/polish/SKILL.md) | Surface every UI/UX refinement, statically | 16 files |
 | [`/ship`](skills/ship/SKILL.md) | Autonomous idea-to-launch build pipeline | 9 files |
@@ -139,15 +139,17 @@ The bench holds 20 specialist desk charters — security, money/billing, privacy
 
 ## `/grill-me` — The Relentless Interviewer
 
-**Get grilled on your plan until every branch of the decision tree is resolved.**
+**Get grilled on your plan until every branch of the decision tree is resolved — and hear what the billion-dollar products you're implicitly competing with would do.**
 
-Enters plan mode (read-only — no code changes possible), then interviews you relentlessly about a plan or design: every hole, every assumption, every thing you haven't thought through, resolved branch-by-branch with dependencies between decisions handled one at a time. Ends only at genuine shared understanding.
+Enters plan mode (read-only — no code changes possible), then runs a structured interrogation with two jobs: find every hole, and surface the features, workflows, and UI/UX ideas that proven products use for your exact problem — the ones you missed.
 
-The smallest skill in the library and one of the highest-leverage: it's the front door to `/gauntlet` (whose GRILL step descends from it) and the cheapest way to find out your plan has a hole before you build it.
+The interview has a spine: it opens with a **Branch Map** (the plan decomposed into a decision tree, walked highest-stakes-first with dependencies resolved first), questions one at a time with the interviewer's recommended answer stated up front. Per branch it runs the **Exemplar Move** (how do 2–3 real products handle this? claims marked recalled-vs-verified, never invented) and **reversibility triage** (one-way doors get drilled hard and must name kill criteria; two-way doors resolve fast). An **anchoring guard** flips the interviewer to steelmanning the opposite if you agree too easily. After the walk: a **pre-mortem** round ("six months later, it failed — what killed it?") and a **Missed-Angle Sweep** (3–7 concrete ideas the plan lacks, each with the company that proves it works). It closes by rendering a **Decision Ledger** — every decision with rationale, rejected alternative, and confidence; surfaced ideas marked adopted/rejected/on-the-table; untested assumptions with named risks — then offers three exits: BUILD-SPEC, ExitPlanMode, or `/gauntlet`. `/grill-me quick` grills only the top-3 highest-stakes branches.
 
-**Use it when:** you want a plan stress-tested *before* writing code, or you say "grill me."
+Still one lean file, and still the front door to `/gauntlet` (whose GRILL step descends from it) — the cheapest way to find out your plan has a hole before you build it.
 
-**Inside:** a single 22-line `SKILL.md`. Proof that a skill is a behavior, not a codebase.
+**Use it when:** you want a plan stress-tested *before* writing code, want to discover what best-in-class products would do here, or say "grill me."
+
+**Inside:** a single 53-line `SKILL.md`. Proof that a skill is a behavior, not a codebase.
 
 ---
 
