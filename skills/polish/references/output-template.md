@@ -10,6 +10,10 @@ and renders deterministically.
   "desk": "MOTION",
   "slice": "src-components",
   "covered_files": ["src/components/Button.tsx", "src/components/Card.tsx"],
+  "receipts": {                                 // REQUIRED: one per covered file — its first non-empty
+    "src/components/Button.tsx": "import React from 'react';",   // line, verbatim (the read receipt);
+    "src/components/Card.tsx":   "import { View } from 'react-native';"  // no/bad receipt → file counts UNSWEPT
+  },
   "findings": [
     {
       "file":  "src/components/Button.tsx",
@@ -37,7 +41,11 @@ and renders deterministically.
 - `anchor` must be quotable from the real line, or `aggregate.py` rejects the finding as a phantom.
 - `who` carries a `[DOCUMENTED]`/`[PRINCIPLE]` tag, or `— (principle, no exemplar)`. Never an invented number.
 - `class` per doctrine: OBJECTIVE (measurable gap) / CONVENTION (breaks app's own system) / TASTE (preference; offer-worded).
-- `covered_files` MUST list every file the agent actually read in its slice — drives the coverage assertion.
+- `covered_files` MUST list every file the agent actually read in its slice, and `receipts` MUST carry each file's
+  first non-empty line verbatim — `aggregate.py` checks receipts against disk; a claimed file with no matching
+  receipt is counted UNSWEPT. Coverage is proven, never claimed.
+- `[DOCUMENTED]` numbers are machine-checked against `north-stars.md`; an unblessed number auto-downgrades the WHO
+  to `[PRINCIPLE]` and flags the finding `CITATION-DOWNGRADED`.
 - Do NOT set `id` or `tier` — the script computes both. Do NOT write `POLISH.md`.
 
 ## 2. What `aggregate.py` renders  → `.polish/POLISH.md`
@@ -86,6 +94,8 @@ Copy 9 (4 obj · 5 conv · 0 taste) → A11y 7 (7 obj · 0 · 0) → Motion 14 (
 - IDs are content-hash stable (`<PREFIX>-<sha1(desk|relpath|what)[:6]>`) — they survive line shifts, so the apply
   menu (`pick MO-7f3a91 …`), per-finding revert, and the stateful delta all key on the ID, never the line number.
 - `- [ ]` open · `- [x]` applied + passed gate · `- [!]` applied then reverted (gate failed) — with `↳ REVERTED: <err>`.
+- Findings the user **declines** are recorded in `state.json` `declined{id: reason}` — the graveyard. They render
+  collapsed under "Previously declined" and are never re-proposed on later runs.
 
 ## 3. Inline summary (printed to chat — terse, pipeline arrows, class split)
 ```

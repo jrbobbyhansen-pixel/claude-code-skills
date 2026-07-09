@@ -54,9 +54,9 @@ truth, and where a value is duplicated everywhere you point to the token it shou
 
 ## Stack adaptation
 - **React Native:** locate the theme/tokens source (a `theme.ts`, context, `ThemeContext`, design-tokens module, or
-  NativeWind/Tailwind config). Note: the repo's `ThemeContext.tsx` was recently deleted (git status) — if theming is
-  in flux, point findings at the *current* source of truth and flag orphaned hard-coded values; do NOT resurrect a
-  removed system or build a new one (that's Axis 1 / build).
+  NativeWind/Tailwind config). If theming is in flux (e.g. a tokens module was recently deleted or replaced — check
+  git status), point findings at the *current* source of truth and flag orphaned hard-coded values; do NOT resurrect
+  a removed system or build a new one (that's Axis 1 / build).
 - **Web:** CSS custom properties, Tailwind config, styled-system theme, design-tokens package. Prefer aligning to the
   config over editing scattered literals.
 - If unifying *truly* requires creating a token file where none exists, that's a build → `OUT OF SCOPE` (note it);

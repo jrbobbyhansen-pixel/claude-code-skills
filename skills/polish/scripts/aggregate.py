@@ -63,7 +63,7 @@ def fid(desk: str, relpath: str, what: str) -> str:
 
 
 def load(findings_dir: str):
-    findings, oos, malformed, covered = [], [], [], set()
+    findings, oos, malformed, covered, receipts = [], [], [], set(), {}
     for fp in sorted(glob.glob(os.path.join(findings_dir, "*.json"))):
         try:
             blob = json.load(open(fp))
@@ -74,6 +74,8 @@ def load(findings_dir: str):
         desk = str(blob.get("desk", "?")).upper()
         for f in blob.get("covered_files", []):
             covered.add(f)
+        for path, tok in (blob.get("receipts") or {}).items():
+            receipts.setdefault(path, tok)
         for f in blob.get("findings", []):
             f.setdefault("desk", desk)
             f["desk"] = str(f["desk"]).upper()
@@ -90,7 +92,7 @@ def load(findings_dir: str):
             findings.append(f)
         for o in blob.get("out_of_scope", []):
             oos.append(o)
-    return findings, oos, malformed, covered
+    return findings, oos, malformed, covered, receipts
 
 
 def verify(findings, root):
@@ -135,6 +137,61 @@ def assign_ids(findings):
     return findings
 
 
+def verify_citations(findings, ns_path):
+    """Truth gate: a [DOCUMENTED] WHO may only quote numbers that exist in north-stars.md.
+    Misses auto-downgrade to [PRINCIPLE] + flag CITATION-DOWNGRADED — never silently kept."""
+    downgrades = []
+    try:
+        ns = open(ns_path, encoding="utf-8", errors="ignore").read().lower()
+    except OSError:
+        return downgrades, False
+    ns_nums = set(re.findall(r"#[0-9a-f]{3,8}|\d+(?:\.\d+)?", ns))
+    for f in findings:
+        who = str(f.get("who", ""))
+        if "[documented]" not in who.lower():
+            continue
+        nums = set(re.findall(r"#[0-9a-f]{3,8}|\d+(?:\.\d+)?", who.lower()))
+        bad = sorted(nums - ns_nums)
+        if bad:
+            f["who"] = re.sub(r"\[documented\]", "[PRINCIPLE]", who, flags=re.I) + \
+                       " _(auto-downgraded: number not in north-stars.md)_"
+            f.setdefault("flags", []).append("CITATION-DOWNGRADED")
+            downgrades.append({"id": f.get("id", "?"), "file": f["file"], "bad": bad, "was": who})
+    return downgrades, True
+
+
+def verify_receipts(receipts, claimed, root):
+    """Read receipts: a covered_files claim only counts if its receipt matches the file's
+    first non-empty line on disk. No receipt / mismatch -> NOT covered (falls into UNSWEPT)."""
+    covered, unreceipted = set(), []
+    for path in sorted(claimed):
+        tok = receipts.get(path)
+        if not tok:
+            unreceipted.append((path, "no receipt"))
+            continue
+        try:
+            first = next((l for l in open(os.path.join(root, path), encoding="utf-8",
+                                          errors="ignore") if l.strip()), "")
+        except OSError:
+            unreceipted.append((path, "unreadable on disk"))
+            continue
+        a = re.sub(r"\s+", "", str(tok)).lower()[:24]
+        b = re.sub(r"\s+", "", first).lower()
+        if not a:
+            unreceipted.append((path, "no receipt"))
+        elif len(a) < 16:
+            # a short receipt only counts when the file's first line is itself short AND matches exactly
+            if len(b) < 16 and a == b:
+                covered.add(path)
+            else:
+                unreceipted.append((path, "receipt too short"))
+        elif a in b[:len(a) + 8]:
+            covered.add(path)
+        else:
+            unreceipted.append((path, "receipt does not match first line"))
+    return covered, unreceipted
+
+
 def dedupe(findings):
     """Merge findings sharing (file, line, change_type)."""
     by_key = {}
@@ -148,6 +205,7 @@ def dedupe(findings):
             if len(f.get("who", "")) > len(cur.get("who", "")):
                 cur["who"] = f["who"]
             cur["confidence"] = max(float(cur["confidence"]), float(f["confidence"]))
+            cur["flags"] = sorted(set(cur.get("flags", []) + f.get("flags", [])))
         else:
             f["desks"] = [f["desk"]]
             by_key[key] = dict(f)
@@ -210,7 +268,7 @@ def apply_order(findings):
     return order
 
 
-def render(ctx, by_desk, conflicts, oos, rejected, malformed, unswept, applied):
+def render(ctx, by_desk, conflicts, oos, rejected, malformed, unswept, applied, extra):
     L = []
     proj, stack = ctx["project"], ctx["stack"]
     totals = ctx["class_totals"]
@@ -222,6 +280,12 @@ def render(ctx, by_desk, conflicts, oos, rejected, malformed, unswept, applied):
     L.append("> Polish, not redesign. Check a box and `/polish` will apply + verify it; re-running continues "
              "unchecked items.\n> Tiers (S/A/B) order the work; class shows defensibility. "
              "`[NEW CODE]`/`[REQUIRES DEP]`/`TASTE`/`CONFLICT` are **pick-only** (never bulk-applied).\n")
+    if extra.get("coverage_unknown"):
+        L.append("> ⚠ **COVERAGE UNKNOWN** — no scan surface map was supplied (`--scan`); the UNSWEPT assertion "
+                 "was skipped. Run `scan.py --json` and re-aggregate before trusting completeness.\n")
+    if extra.get("ns_missing"):
+        L.append("> ⚠ **CITATION NUMBER GATE SKIPPED** — north-stars.md not found; [DOCUMENTED] numbers were NOT "
+                 "verified this run.\n")
 
     # summary line (pipeline arrows + class split)
     seg = []
@@ -260,14 +324,32 @@ def render(ctx, by_desk, conflicts, oos, rejected, malformed, unswept, applied):
         L.append(f"\n## OUT OF SCOPE (redesign) ({len(oos)}) — considered, deliberately excluded")
         for o in oos:
             L.append(f"- `{o.get('file', '?')}` — {o.get('what', '?')}  _(Axis {o.get('axis', '?')})_")
+    if extra.get("downgrades"):
+        dg = extra["downgrades"]
+        L.append(f"\n## Citation downgrades ({len(dg)}) — [DOCUMENTED] number not in north-stars.md → [PRINCIPLE]")
+        for d in dg[:30]:
+            L.append(f"- **{d['id']}** `{d['file']}` — unblessed number(s): {', '.join(d['bad'])}")
     if rejected:
         L.append(f"\n## Rejected (phantom citation / no read-proof) ({len(rejected)})")
         for f in rejected[:30]:
             L.append(f"- ~~`{f['file']}:{f.get('line', '?')}`~~ ({f['desk']}) — {f.get('_reject', '?')}")
+    if extra.get("declined"):
+        di = extra["declined"]
+        dmap = extra.get("declined_map", {})
+        L.append(f"\n<details><summary>Previously declined — the graveyard ({len(di)}; not re-proposed)</summary>\n")
+        for f in di:
+            reason = dmap.get(f["id"]) or "declined in a prior run"
+            L.append(f"- ~~**{f['id']}**~~ `{f['file']}:{f['line']}` — {f['what']}  _({reason})_")
+        L.append("\n</details>")
     if unswept:
-        L.append(f"\n## UNSWEPT ({len(unswept)}) — surface files no desk reported covering")
+        L.append(f"\n## UNSWEPT ({len(unswept)}) — surface files with no receipt-verified coverage")
         for u in sorted(unswept)[:50]:
             L.append(f"- `{u}`")
+    if extra.get("unreceipted"):
+        ur = extra["unreceipted"]
+        L.append(f"\n## No read receipt ({len(ur)}) — claimed covered, counted UNSWEPT until re-read")
+        for path, why in ur[:30]:
+            L.append(f"- `{path}` — {why}")
     if malformed:
         L.append(f"\n## Malformed (re-run desk) ({len(malformed)})")
         for m in malformed[:30]:
@@ -296,6 +378,8 @@ def main() -> int:
     ap.add_argument("--scan", default=None, help="scan.py --json output (for surface map + ctx)")
     ap.add_argument("--state", default=None, help="state.json (applied ids + file hashes)")
     ap.add_argument("--out", default=".polish/POLISH.md")
+    ap.add_argument("--north-stars", default=None,
+                    help="override path to north-stars.md (default: this skill's references/)")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
 
@@ -314,14 +398,32 @@ def main() -> int:
             prior = {}
     applied = set(prior.get("applied", []))
 
-    findings, oos, malformed, covered = load(args.findings)
+    findings, oos, malformed, claimed, receipts = load(args.findings)
     findings, rejected = verify(findings, root)
     findings = assign_ids(findings)
     findings = dedupe(findings)
+    # truth gate runs AFTER dedupe so a downgrade lands (flagged) on the merged row —
+    # never displaced or flag-stripped by the merge
+    ns_path = args.north_stars or os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "references", "north-stars.md")
+    downgrades, ns_found = verify_citations(findings, ns_path)
+    if not ns_found:
+        print("  ! CITATION NUMBER GATE SKIPPED — north-stars.md not found", file=sys.stderr)
+
+    # graveyard BEFORE conflict detection: buried findings can't win/lose conflicts
+    declined_map = prior.get("declined", {})
+    if isinstance(declined_map, list):
+        declined_map = {i: "" for i in declined_map}
+    declined_items = [f for f in findings if f["id"] in declined_map]
+    findings = [f for f in findings if f["id"] not in declined_map]
     conflicts = find_conflicts(findings)
 
-    # coverage assertion
+    # coverage assertion — receipt-verified, not self-attested
+    covered, unreceipted = verify_receipts(receipts, claimed, root)
     surface = set(scan.get("surface_map", []))
+    coverage_unknown = not surface
+    if coverage_unknown:
+        print("  ! COVERAGE UNKNOWN — no scan surface map (--scan); UNSWEPT assertion disabled", file=sys.stderr)
     unswept = sorted(surface - covered) if surface else []
 
     # group by desk (primary desk = first in merged list)
@@ -342,8 +444,10 @@ def main() -> int:
            "ui_loc": scan.get("ui_loc", "?"),
            "n": len(findings), "class_totals": class_totals}
 
+    extra = {"downgrades": downgrades, "unreceipted": unreceipted, "declined": declined_items,
+             "declined_map": declined_map, "coverage_unknown": coverage_unknown, "ns_missing": not ns_found}
     os.makedirs(os.path.dirname(os.path.join(root, args.out)) or ".", exist_ok=True)
-    md = render(ctx, by_desk, conflicts, oos, rejected, malformed, unswept, applied)
+    md = render(ctx, by_desk, conflicts, oos, rejected, malformed, unswept, applied, extra)
     open(os.path.join(root, args.out), "w").write(md)
 
     # machine sidecar for the apply phase
@@ -357,8 +461,9 @@ def main() -> int:
     side = os.path.join(root, os.path.dirname(args.out), "findings.index.json")
     json.dump(index, open(side, "w"), indent=2)
 
-    # state ledger (file hashes for stateful delta) — preserve applied set
+    # state ledger (file hashes for stateful delta) — preserve applied set + graveyard
     state = {"applied": sorted(applied),
+             "declined": declined_map,
              "file_hashes": {p: file_hash(os.path.join(root, p)) for p in sorted(surface)}}
     reopened = [p for p, h in (prior.get("file_hashes") or {}).items()
                 if file_hash(os.path.join(root, p)) != h]
@@ -368,9 +473,9 @@ def main() -> int:
     if not args.quiet:
         print(f"findings: {len(findings)}  (obj {class_totals['OBJECTIVE']} · "
               f"conv {class_totals['CONVENTION']} · taste {class_totals['TASTE']})  "
-              f"rejected: {len(rejected)}  conflicts: {len(conflicts)}  "
-              f"unswept: {len(unswept)}  malformed: {len(malformed)}  "
-              f"reopened: {len(reopened)}  → {args.out}")
+              f"rejected: {len(rejected)}  downgraded: {len(downgrades)}  conflicts: {len(conflicts)}  "
+              f"unswept: {len(unswept)}  no-receipt: {len(unreceipted)}  malformed: {len(malformed)}  "
+              f"buried: {len(declined_items)}  reopened: {len(reopened)}  → {args.out}")
     return 0
 
 

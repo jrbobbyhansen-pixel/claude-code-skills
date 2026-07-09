@@ -191,6 +191,8 @@ Discipline is the point — this is polish, **not** redesign. It never touches i
 
 A calibration phase locks the app's *own* design language first, so suggestions match the app rather than genericizing it. Findings aggregate into an apply menu; approved fixes go through a two-tier static verify gate. Re-runs are stateful deltas — it remembers what you rejected.
 
+v1.2 makes the promises mechanical: every `[DOCUMENTED]` company number is **machine-checked** against the blessed-numbers whitelist (an unblessed number auto-downgrades to `[PRINCIPLE]`, visibly flagged), coverage claims require **read receipts** verified against disk (a claimed file with no matching receipt counts as unswept, and a missing surface map announces itself loudly), and declined findings persist in a **graveyard** — never re-proposed, always visible.
+
 **Use it when:** "make it feel premium / Apple-quality", "find every micro-interaction we're missing."
 
 **Inside:** `SKILL.md` + 10 desk charters + doctrine, north-stars, and output template + 2 scripts (scan, aggregate).

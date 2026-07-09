@@ -1,7 +1,7 @@
 ---
 name: polish
 description: Ruthlessly scan an entire codebase statically and surface every UI/UX enhancement that would make the app shine — micro-interactions, motion, refined copy, empty/loading/error states, accessibility, typographic rhythm, consistency, layout/adaptivity, forms, performance/jank, and gestures — then apply the ones you approve. Polish, NOT redesign: never touches information architecture, navigation, data model, component APIs, or adds features/dependencies. Findings fan out across expert-lens desks over bounded slices; each cites file:line + a read-proof anchor, explains WHY it elevates the experience, names a billion-dollar company that does it (truthfully, never an invented spec), and is classed OBJECTIVE/CONVENTION/TASTE. Use when the user says "/polish", wants to make an app feel great / more premium / "Apple-quality", asks for UI/UX polish, micro-interactions, or wants every shippable refinement found across the codebase.
-version: 1.1.0
+version: 1.2.0
 author: Bobby Hansen Jr. (bobbyhansenjr)
 license: CC0
 platforms: [linux, macos]
@@ -83,7 +83,9 @@ every desk prompt** alongside the doctrine. It — not the north-stars — is th
 For each active desk × each slice from `scan.json`, spawn an Agent (`general-purpose`). **Batch 3 concurrent;
 sequential between batches.** Into each agent paste **in full**: `references/doctrine.md` + `references/north-stars.md`
 + that desk's `references/desks/<desk>.md` + the **App Style Profile** + the slice's file list. Instruct it to:
-- read **every file in its slice** and return `covered_files[]` (drives the coverage assertion);
+- read **every file in its slice** and return `covered_files[]` PLUS `receipts{}` — each covered file's first
+  non-empty line, verbatim; `aggregate.py` verifies receipts against disk and a claimed file with no matching
+  receipt counts as UNSWEPT (coverage is proven, never claimed);
 - emit findings to `.polish/findings/<desk>-<slice>.json` in the `output-template.md` schema — each with `file`,
   `line`, **`anchor`** (verbatim snippet at that line), `what`, `why`, **`who`** (`[DOCUMENTED]`/`[PRINCIPLE]`/none),
   `fix` (stack-idiomatic, paste-ready), **`class`**, `change_type`, optional `fix_target`, `flags`, `confidence`;
@@ -93,12 +95,18 @@ Use `opus` for Copy and Motion desks (taste depth); `sonnet` for the rest.
 ### Phase 2 — Aggregate & report  (`scripts/aggregate.py`)
 Run `python3 scripts/aggregate.py --findings .polish/findings --root <path> --scan .polish/scan.json
 --state .polish/state.json --out .polish/POLISH.md`. The script mechanically: **verifies every citation** (phantom
-`file:line` AND mismatched `anchor` → `Rejected`), **dedupes** by `(file,line,change_type)` merging desks, **detects
-conflicts** (same target, different fix → precedence ladder, pick-only), assigns **stable content-hash IDs**, scores
-**tier S/A/B**, asserts **coverage** (`UNSWEPT` = surface files no desk covered), computes **apply order**, and renders
-`.polish/POLISH.md` + a `findings.index.json` sidecar + the `state.json` ledger. **Phase 2b (citation audit) is now
-mechanical** — not honor-system. Then print the **inline summary** (pipeline-arrow counts with the class split + ★
-signature wins + pick-only counts), per `output-template.md`.
+`file:line` AND mismatched `anchor` → `Rejected`), **verifies citation numbers** (every `[DOCUMENTED]` number is
+checked against `north-stars.md`; an unblessed number auto-downgrades to `[PRINCIPLE]`, flagged
+`CITATION-DOWNGRADED` — qualitative citation truth remains the desks' and reviewer's duty), **verifies read
+receipts** (a covered-file claim only counts when its receipt matches disk),
+**dedupes** by `(file,line,change_type)` merging desks, **detects conflicts** (same target, different fix →
+precedence ladder, pick-only), assigns **stable content-hash IDs**, scores **tier S/A/B**, asserts **coverage**
+(`UNSWEPT` = surface files without receipt-verified coverage; a missing `--scan` map is announced loudly, never
+silently skipped), **buries the graveyard** (previously-declined IDs render collapsed, never re-proposed), computes
+**apply order**, and renders `.polish/POLISH.md` + a `findings.index.json` sidecar + the `state.json` ledger.
+**Phase 2b (citation audit) is now mechanical** — including truthfulness, not just existence. Then print the
+**inline summary** (pipeline-arrow counts with the class split + ★ signature wins + pick-only counts), per
+`output-template.md`.
 
 ### Phase 3 — Apply menu  (safe, surgical, VCS-agnostic)
 Ask: **Apply? [ ALL · by desk · pick &lt;ids&gt; · none ]**. `[NEW CODE]`, `[REQUIRES DEP]`, **TASTE**, and **CONFLICT**
@@ -110,6 +118,9 @@ Read `findings.index.json` for the per-id fix + `apply_order` (NEW CODE primitiv
 3. After a batch (or per-finding for high-risk), run the **Verify Gate** (3b). On Tier-A failure, restore the batch's
    backups most-recent-first, re-running Tier-A until green; each restored finding → `- [!]` with `↳ REVERTED: <err>`.
 4. On success, flip the checkbox to `- [x]` (keyed by **ID**) and append the id to `state.json` `applied[]`.
+5. When the user **declines** findings (`none`, skip, or an explicit no), record each id in `state.json`
+   `declined{id: reason}` (capture the stated reason when given) — the graveyard. Declined findings are never
+   re-proposed; they render collapsed on future runs.
 *(If the tree is clean and the user prefers a git trail, additionally `git commit` per surviving finding
 `polish: <id> <what>` on the current branch — opt-in, never on a dirty tree, never auto-pushed.)*
 

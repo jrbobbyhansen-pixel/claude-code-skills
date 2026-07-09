@@ -109,6 +109,9 @@ WHO exists for *credibility*. A fabricated spec destroys it. Tag every WHO with 
   transition [PRINCIPLE]." When in doubt, drop the number and keep the principle — a truthful principle beats a precise lie.
 - **WHO is optional when no north-star genuinely exemplifies the mechanism.** Write `WHO: — (principle, no exemplar)`
   rather than stapling an irrelevant brand to a finding it doesn't actually demonstrate. A forced name is worse than none.
+- **This is machine-checked, not honor-system:** `aggregate.py` verifies every `[DOCUMENTED]` number against
+  `north-stars.md` and auto-downgrades misses to `[PRINCIPLE]` with a `CITATION-DOWNGRADED` flag. Write it truthfully
+  the first time — a downgrade is visible in the report.
 
 ## Stack Idiom (adapt, never mismatch)
 Read the detected stack before proposing anything. React Native uses `Pressable`/`hitSlop`/`accessibilityLabel`/
