@@ -1,7 +1,7 @@
 ---
 name: ascend
 description: Read an entire codebase, lock its purpose and users, then run a compounding enhancement-build loop (≥3 passes that escalate fidelity) that levels the app UP toward billion-dollar SaaS standards — adding capability, depth, and richness while preserving what the app already is. Each pass benchmarks the 2-3 best-in-class exemplars for THIS app's job (Asana for boards/movement, Linear for speed/triage, Stripe for forms/data, Notion for views, Figma for collaboration), researches their real patterns (hybrid: recall + web-verify, cited truthfully), scores quantified gaps, BUILDS the enhancement on an isolated branch in the app's own design language, verifies it actually works (tests + liveness + reachability), has an independent agent review it, then pauses for your diff review and carries the new state forward as the baseline for the next pass. Enhancement build, NOT redesign (never tears down identity/IA wholesale) and NOT mere polish (it adds real capability). Use when the user says "/ascend", wants to level an app up to best-in-class, "make it world-class", enrich features toward a billion-dollar competitor, or run an iterative build loop that compounds on itself.
-version: 1.0.0
+version: 1.1.0
 author: Bobby Hansen Jr. (bobbyhansenjr)
 license: CC0
 platforms: [linux, macos]
@@ -30,7 +30,8 @@ out (logged to `DEFERRED (redesign)` so you see it was weighed). Full law in [`r
 - **BUILD runs inline in the main agent** (it calls the `/run` and `/polish` skills, which subagents can't). MAP and
   the independent review fan out to sub-agents; BUILD does not.
 - **At each pass's review gate the loop YIELDS THE TURN:** it runs CARRY (persists state), presents the diff, and
-  **stops**. It does **not** start the next pass in the same turn — that would defeat the gate.
+  **stops**. It does **not** start the next pass in the same turn — that would defeat the gate. (Slate-mode
+  exception: the slate gate is the idea gate; approved items build in one turn — loop.md § Slate mode.)
 - **Resume:** a bare `/ascend` in a repo that already has `.ascend/state.json` **resumes, not restarts** — run
   `python3 scripts/state.py status` first; if a pass is awaiting a decision, apply the user's approve/revert/adjust to
   it, then begin the next pass. Skip Phase 0/0.5 when already done.
@@ -48,13 +49,17 @@ out (logged to `DEFERRED (redesign)` so you see it was weighed). Full law in [`r
 /ascend "kanban for tasks"       # focus a capability/theme
 /ascend --loops 4                # set pass count (default 3 · minimum 3)
 /ascend --target asana,linear    # pin exemplars (else inferred from the goal-lock)
+/ascend --slate                  # ideas-first: BENCHMARK+GAP every planned pass, gate on the scored
+                                 # slate BEFORE building, then build only approved items (loop.md § Slate mode)
 /ascend --restart                # ignore existing .ascend/ and start fresh
 ```
 
 ## Pre-flight & scaffolding (deterministic — `scripts/`)
 1. `scripts/init.sh` — gitignores `.ascend/` **first**, stashes a dirty tree, creates the `ascend/integration` branch
    off the base (accepted passes merge here with `--no-ff`; `main` is untouched until SYNTH by explicit request). Not
-   a git repo → it stops and offers `git init` or copy-snapshots; **never auto-applies without a working revert.**
+   a git repo → it stops and offers `git init` or `init.sh --snapshot`; target **nested inside a larger repo** (e.g.
+   a skills dir inside a home-dir repo) → it **refuses branch mode** and requires `--snapshot` (copy-snapshot
+   isolation, scripted revert via `.ascend/REVERT.md`); **never auto-applies without a working revert.**
 2. `python3 scripts/detect.py .` → the **Project Profile** (`type/typecheck/lint/test/build/launch_adapter`) so VERIFY
    never guesses a command. (Mirrors `/ship`'s detect.py.)
 3. `python3 scripts/scan.py .` → UI-file inventory + **bounded slices** so Phase 0 MAP has a real coverage guarantee.
@@ -95,6 +100,10 @@ surface without throwing) > `compiled-only` (typecheck/build/lint only — **NOT
 re-run the test suite and **diff against the pre-pass baseline** (any new red blocks the gate); confirm the new surface
 is **reachable** (route registered AND linked) — an orphaned screen is rejected. If there's no test suite or no
 bootable target, say so at the gate.
+**Prompt-artifact targets** (Project Profile `target_class: prompt-artifact` — skills/prompts): the tier ladder is
+`live-fired` (a subagent executes the artifact cold against realistic + adversarial input) > `structure-linted` >
+`read-only` — protocol in loop.md § VERIFY adapters. The same honesty law applies: a live-fired opening is not a
+live-fired full run; report what was actually exercised.
 
 ## The value formula (fixed + measurable)
 `score = user_value × identity_fit ÷ effort`, each factor **1–5** (effort divides — higher effort *lowers* the score).

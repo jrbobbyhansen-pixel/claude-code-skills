@@ -24,6 +24,29 @@ def read_json(p: Path) -> dict:
 
 
 def detect(root: Path) -> dict:
+    # ---- prompt-artifact targets (skills / prompts) ----
+    # A SKILL.md marker means the target is a prompt artifact, not an app: no
+    # typecheck/build; VERIFY uses the live-fire adapter (loop.md § VERIFY adapters).
+    # App markers win: a repo with package.json etc. is an app even if a SKILL.md
+    # happens to sit at its root (never blank an app's verify commands).
+    app_markers = any((root / m).exists() for m in
+                      ("package.json", "pubspec.yaml", "Package.swift")) \
+                  or next(root.glob("*.xcodeproj"), None) is not None
+    if (root / "SKILL.md").exists() and not app_markers:
+        return {
+            "type": "prompt-artifact",
+            "target_class": "prompt-artifact",
+            "typecheck": "", "lint": "", "test": "", "build": "",
+            "launch_adapter": "live-fire",
+            "launch_cmd": "",
+            "has_tests": False,
+            "is_git": (root / ".git").exists(),
+            "notes": ["Prompt-artifact target: verify via the live-fire harness "
+                      "(loop.md § VERIFY adapters); tiers live-fired > structure-linted > read-only.",
+                      "In snapshot mode .ascend/ lives INSIDE the target: if this directory is "
+                      "published/synced (e.g. a skills library), exclude .ascend/ from the sync."],
+        }
+
     pkg = read_json(root / "package.json")
     scripts = pkg.get("scripts", {}) or {}
     deps = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})}
@@ -90,11 +113,12 @@ def detect(root: Path) -> dict:
 
     return {
         "type": ptype,
+        "target_class": "app",
         "typecheck": typecheck,
         "lint": lint,
         "test": test,
         "build": build,
-        "launch_adapter": launch,      # dev-server | render-test | simulator | device | unknown
+        "launch_adapter": launch,      # dev-server | render-test | simulator | device | live-fire | unknown
         "launch_cmd": launch_cmd,
         "has_tests": bool(test),
         "is_git": (root / ".git").exists(),

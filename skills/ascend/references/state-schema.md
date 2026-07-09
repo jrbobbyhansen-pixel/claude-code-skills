@@ -45,7 +45,8 @@
     "lint":      "pass",
     "build":     "pass",
     "tests":     "pass",                   // pass | fail | not_run  (fail → REJECTED at gate)
-    "tier":      "render-tested"           // ran-in-app | render-tested | compiled-only
+    "tier":      "render-tested"           // app: ran-in-app | render-tested | compiled-only
+                                           // prompt-artifact: live-fired | structure-linted | read-only
   },
   "reachable": true,                       // new surface wired into nav? false → REJECTED (orphan)
   "shots": [".ascend/shots/pass-1/board.png"]
@@ -56,8 +57,9 @@
 `typecheck`/`lint`/`build`/`tests` enums valid · every exemplar tagged `PRINCIPLE`/`VERIFIED` and `VERIFIED` carries a
 `source` · `typecheck`/`build`/`tests == "fail"` blocks the gate · `reachable:false` blocks the gate · accepted pass
 has `new_baseline` · value factors are ints 1–5. **Warns (surfaced at the gate, not blocking):** `tier:"compiled-only"`
-(NOT run) · `tests:"not_run"` (regressions unguarded) · `lint == "fail"` · a `chosen` item with `user_value < 4` (below
-the entry bar).
+(NOT run) and its prompt-artifact analogs `structure-linted`/`read-only` (NOT executed) · `tests:"not_run"`
+(regressions unguarded) · `lint == "fail"` · a `chosen` item with `user_value < 4` (below the entry bar). Tier
+vocabulary is gated by target class: `stack: prompt-artifact` takes the prompt tiers, everything else the app tiers.
 
 **What `state.py` CANNOT enforce — these are the independent CHECK agent's job (loop step 5), not the script's:** whether
 a `[PRINCIPLE]` tag is wrongly on a distinctive specific or a `[VERIFIED]` source is actually strong; whether the build

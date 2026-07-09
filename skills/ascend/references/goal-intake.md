@@ -37,3 +37,8 @@ inferred:  <true|false per field, or "user-confirmed">
 ## Re-runs
 On a later `/ascend` run, if `.ascend/goal.md` exists, **show it and ask "still accurate?"** rather than re-grilling
 from scratch. Update only what changed.
+
+**Mid-loop corrections.** When the user corrects any locked fact at a gate (it happens — the draft was inferred),
+update `goal.md` immediately (mark the field user-confirmed), then **re-run GAP for every not-yet-built pass** against
+the corrected goal — the biggest gap usually moves. Accepted passes stand: corrected goals govern forward, they never
+re-litigate backward.

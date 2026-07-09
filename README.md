@@ -58,6 +58,8 @@ Reads the entire codebase, locks the app's purpose and users (goal-lock), then r
 
 Enhancement build, **not** redesign (never tears down identity or information architecture) and **not** mere polish (it adds real capability). Deterministic scaffolding scripts handle state, pass initialization, and codebase scanning; a coverage-guaranteed MAP phase ensures nothing is missed.
 
+v1.1 (built by running ascend on itself) adds: **`--slate`** ideas-first mode — gate on the full scored slate *before* anything is built; a **`--snapshot`** isolation lane — safe for non-git targets and targets nested inside a larger repo, with per-pass snapshots and a scripted, dependency-preserving revert; and **prompt-artifact targets** — point ascend at a skill or prompt, not just an app, with live-fire verify tiers and class-gated state validation.
+
 **Use it when:** "make this world-class", "level this app up", "enrich it toward [billion-dollar competitor]".
 
 **Inside:** `SKILL.md` + 6 references (doctrine, exemplar patterns, goal-intake, loop mechanics, state schema, a full worked example pass) + 5 scripts (detect, init, new-pass, scan, state).

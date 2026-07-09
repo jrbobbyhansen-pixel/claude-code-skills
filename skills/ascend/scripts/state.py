@@ -18,7 +18,8 @@ import argparse, json, sys
 from pathlib import Path
 
 STATUSES = {"accepted", "reverted", "adjusted", "pending"}
-TIERS = {"ran-in-app", "render-tested", "compiled-only"}
+TIERS = {"ran-in-app", "render-tested", "compiled-only",        # app targets
+         "live-fired", "structure-linted", "read-only"}         # prompt-artifact targets
 TAGS = {"PRINCIPLE", "VERIFIED"}
 PHASES = {"skeleton", "refine", "detail"}
 
@@ -58,12 +59,18 @@ def validate_pass(rec: dict, st: dict) -> list:
             fail(f"exemplar '{ex.get('name')}' tag must be PRINCIPLE or VERIFIED")
         if ex["tag"] == "VERIFIED" and not ex.get("source"):
             fail(f"exemplar '{ex.get('name')}' is VERIFIED but has no source URL")
-    # verify discipline
+    # verify discipline — tier vocabulary is gated by target class (stack), so an app
+    # pass can't claim a prompt tier to dodge the compiled-only warning (or vice versa)
     v = rec["verify"]
-    if v.get("tier") not in TIERS:
-        fail(f"verify.tier must be one of {TIERS}")
+    prompt_tiers = {"live-fired", "structure-linted", "read-only"}
+    allowed = prompt_tiers if st.get("stack") == "prompt-artifact" else TIERS - prompt_tiers
+    if v.get("tier") not in allowed:
+        fail(f"verify.tier must be one of {sorted(allowed)} for stack {st.get('stack', '?')!r} "
+             f"(got {v.get('tier')!r})")
     if v.get("tier") == "compiled-only":
         warns.append(f"pass {rec['n']}: verify tier is COMPILED-ONLY — surface was NOT run; flag this at the gate")
+    if v.get("tier") in ("structure-linted", "read-only"):
+        warns.append(f"pass {rec['n']}: verify tier is {v['tier'].upper()} — artifact was NOT executed; flag this at the gate")
     # gate signals must use the documented enum; hard fails block the gate, lint warns
     states = {"pass", "fail", "not_run"}
     for g in ("typecheck", "lint", "build", "tests"):
