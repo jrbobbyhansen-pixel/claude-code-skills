@@ -93,13 +93,14 @@ Supports multi-provider model routing (Anthropic, OpenAI, xAI, OpenRouter, Gemin
 
 A surgical, zero-mercy audit of an entire repository, run in five phases modeled on first-principles manufacturing review:
 
-1. **Inventory** — sense the atoms: parallel agents fan out until 100% of files are read
+1. **Inventory** — sense the atoms: parallel agents over bounded slices, each returning a coverage receipt; the audit cannot proceed until `UNMAPPED = ∅` — **coverage is proven, never claimed**
 2. **Physics Test** — prove it works: verify claimed behavior against actual code paths
 3. **Delete/Trim** — ruthless 80/20: dead code, unused deps, unreachable branches
 4. **Risk/Edge Proof** — hunt unhandled edges, race conditions, hardcoded secrets, silent failures
-5. **Handoff** — one dependency-ordered, executable fix plan, ranked P0 → P2
+5. **Cross-Examination** — fresh-context adversarial verifiers try to *refute* every P0 (plus a P1/P2 sample) before anything executes; the kill rate is reported honestly — the maker never grades itself
+6. **Handoff** — one dependency-ordered, executable fix plan, ranked P0 → P2
 
-The philosophy is honesty-first: every finding ships with a specific fix or an explicit `[NEEDS MANUAL CONFIRM]` — no vague recommendations, no nice-to-haves. Output includes both an inline report and an Obsidian-ready wiki note with health scores.
+Every finding carries evidence under **the Finding Contract**: `[PROVEN]` (executed or traced this run, receipts attached) or `[SUSPECTED]` (pattern-matched) — and a suspected P0 can never execute unverified. The philosophy is honesty-first: every finding ships with a specific fix or an explicit `[NEEDS MANUAL CONFIRM]` — no vague recommendations, no nice-to-haves. Output includes an inline report and (when your wiki exists) an Obsidian-ready audit note with health scores.
 
 **Use it when:** you want to ruthlessly debug, clean, and harden a project in one command.
 

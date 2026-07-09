@@ -1,6 +1,6 @@
 ---
 name: elon-audit
-description: First-principles surgical audit of an entire codebase. Scours 100% of files via parallel agents, surfaces every bug/waste/risk ranked P0→P2 with exact fixes, delivers a dependency-ordered executable plan. One command. Use when you want to ruthlessly debug, clean, and supercharge a project.
+description: First-principles surgical audit of an entire codebase. Scours 100% of files via parallel agents with receipt-verified coverage (UNMAPPED must be empty), surfaces every bug/waste/risk ranked P0→P2 with exact fixes and proven-vs-suspected evidence, cross-examines its own findings with adversarial verifiers before anything executes, delivers a dependency-ordered executable plan. One command. Use when you want to ruthlessly debug, clean, and supercharge a project.
 ---
 
 # Elon Audit — First-Principles Codebase Audit
@@ -35,8 +35,15 @@ Runs against current working directory. `cd` to the project first.
    - `requirements.txt` / `pyproject.toml` → `pip install -e . && python -m pytest`
    - Multiple stacks → run all, report independently
    - None detected → emit `[NEEDS CONFIRM]`, pause for user input before continuing
-4. Spawn parallel Agent subagents — one per top-level directory or logical module. Each agent reads 100% of its assigned files and returns structured findings: `{file, line, type, severity, fix}`. Batch 3 at a time, sequential between batches.
-5. Collect all findings. Deduplicate. Build dependency graph across all findings.
+4. Build the file manifest, then slice it into bounded batches — ≤15 files or ≤2,500 LOC per agent, whichever binds
+   first (split oversized
+   directories, merge tiny ones). Spawn parallel Agent subagents, one per slice, 3 at a time, sequential between
+   batches. Each agent reads 100% of its slice and returns structured findings `{file, line, type, severity,
+   evidence, fix}` PLUS `covered_files[]` — its coverage receipt.
+5. Stitch the receipts: `UNMAPPED = manifest − ∪covered_files`. UNMAPPED ≠ ∅ → dispatch a sweeper agent for the
+   remainder and re-assert. The audit does not proceed past Phase 1 until UNMAPPED = ∅ — **coverage is proven,
+   never claimed.**
+6. Collect all findings. Deduplicate. Build dependency graph across all findings.
 
 **Output:**
 ```
@@ -46,7 +53,8 @@ Total files:     N
 Total LOC:       N
 Primary stack:   [detected]
 Build command:   [detected or confirmed]
-Agents spawned:  N across N directories
+Agents spawned:  N across N slices
+Coverage:        N/N files read — UNMAPPED: 0 ✓ (receipt-verified)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -72,6 +80,19 @@ Errors:   N  (→ P0 auto-promoted)
 Time:     Ns
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+---
+
+## The Finding Contract (applies to every finding, wherever raised)
+
+Every finding carries `evidence` — no naked findings:
+- **[PROVEN]** — executed or traced this run: the failing command + output, the zero-caller grep transcript, the
+  exact call path. Proven findings may auto-execute in their tier.
+- **[SUSPECTED]** — pattern-matched, not yet demonstrated. A suspected P0 MUST be proven (execute or trace it) or
+  downgraded to `[NEEDS MANUAL CONFIRM]` before the execution phase — no exceptions. Suspected P1/P2 execute only
+  behind their tier's build gate.
+
+Schema: `{file, line, type, severity, evidence: proven|suspected, fix}`.
 
 ---
 
@@ -131,12 +152,33 @@ Time:     Ns
 
 ---
 
+## Phase 4.5 — Cross-Examination (The Maker Never Grades Itself)
+
+Before anything executes: spawn adversarial verifier agents with fresh context — they see the findings and the code,
+never the authoring reasoning. Their single job is to REFUTE.
+
+1. Every P0 gets a verifier; P1/P2 get a ≥20% sample (the whole tier if it's small).
+2. A verifier re-derives the finding from the code: reproduce the proof, or produce the counter-evidence. A verifier
+   that independently demonstrates a [SUSPECTED] finding upgrades it to [PROVEN].
+3. Refuted → cut or downgraded, refutation logged in the report; a refuted finding's dependents are re-checked
+   before the plan is presented. Survived → confirmed.
+4. Report the kill rate honestly: `P0: 12 raised → 9 confirmed · 3 refuted`. A 0% refute rate on a large audit is a
+   smell, not a flex.
+
+Only **confirmed** findings enter the executable plan as P0s. Unexamined P1/P2 findings enter the plan **as raised**
+— their tier's build gate is their check; "confirmed" means *not refuted*. If the sample's refute rate exceeds ~20%,
+widen the sample before presenting the plan.
+
+---
+
 ## Phase 5 — Handoff (Holy Shit Done)
 
-1. Write `AUDIT.md` to repo root — full findings, fix list, tier breakdown, before/after stats
-2. Write audit note to `~/clawd/wiki/systems/[appname]-audit-YYYY-MM-DD.md` (see format below)
-3. Update `~/clawd/wiki/projects/[appname].md` — add: `Last audited: YYYY-MM-DD → [[systems/[appname]-audit-YYYY-MM-DD]]`
-4. Update Claude project memory: project name, audit date, P-tiers completed, top 3 findings, health status
+1. Write `AUDIT.md` to repo root — full findings (with evidence + cross-exam stats), fix list, tier breakdown,
+   before/after stats
+2. If `~/clawd/wiki/` exists: write the audit note to `~/clawd/wiki/systems/[appname]-audit-YYYY-MM-DD.md` (format
+   below) and update `~/clawd/wiki/projects/[appname].md` with `Last audited: YYYY-MM-DD → [[systems/...]]`.
+   If it doesn't exist: skip both and say so — never invent the tree.
+3. Update Claude auto-memory: project name, audit date, P-tiers completed, top 3 findings, health status
 
 ---
 
@@ -145,7 +187,8 @@ Time:     Ns
 After the audit report is presented inline, enter plan mode with the full fix list.
 
 On approval:
-1. Execute all P0 fixes → run build → confirm passes → `git commit -m "[elon-audit] P0: kill shots — N fixes"`
+1. Execute all **confirmed** P0 fixes (proven + cross-examined; anything else is `[NEEDS MANUAL CONFIRM]`) → run
+   build → confirm passes → `git commit -m "[elon-audit] P0: kill shots — N fixes"`
 2. Execute all P1 fixes → run build → confirm passes → `git commit -m "[elon-audit] P1: performance & waste — N fixes"`
 3. Execute all P2 fixes → run build → confirm passes → `git commit -m "[elon-audit] P2: supercharge — N fixes"`
 4. Run Phase 5 Handoff
@@ -169,22 +212,23 @@ ELON AUDIT — [PROJECT NAME]
 [DATE] | [N] LOC | [N] files | [STACK]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-INVENTORY        [summary]
+INVENTORY        [summary] — Coverage: N/N files, UNMAPPED: 0 ✓
 PHYSICS TEST     PASS/FAIL — N warnings, N errors
+CROSS-EXAM       P0: N raised → N confirmed · N refuted | P1/P2 sample: N checked → N confirmed
 
-P0 KILL SHOTS    N findings
+P0 KILL SHOTS    N confirmed
 ──────────────────────────────────────────────────
-[ID]  [file:line]  [issue]
+[ID]  [file:line]  [PROVEN|SUSPECTED]  [issue]
       FIX: [exact command or diff]
 
-P1 PERF/WASTE    N findings
+P1 PERF/WASTE    N confirmed
 ──────────────────────────────────────────────────
-[ID]  [file:line]  [issue]
+[ID]  [file:line]  [PROVEN|SUSPECTED]  [issue]
       FIX: [exact command or diff]
 
-P2 SUPERCHARGE   N findings
+P2 SUPERCHARGE   N confirmed
 ──────────────────────────────────────────────────
-[ID]  [file:line]  [issue]
+[ID]  [file:line]  [PROVEN|SUSPECTED]  [issue]
       FIX: [exact command or diff]
 
 DEPENDENCY ORDER
