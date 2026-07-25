@@ -1,9 +1,12 @@
 # Capture — per-platform recipes for screenshots + video
 
-Read this in Phase 3. Goal: identical capture conditions across all N concepts (same device/viewport, same
-data, same states) so the comparison is about the design, not the photography. All artifacts land in
-`<project>/design/triptych/<yyyy-mm-dd>-<target-slug>/`, numbered in thesis order
-(`01-<thesis-slug>.png`, `01-<thesis-slug>.mp4`, extra states as `01-<thesis-slug>-<state>.png`).
+Read this in Phase 3. Goal: identical capture conditions across all panels — incumbent included — (same
+device/viewport, same data snapshot, same walkthrough script) so the comparison is about the design, not the
+photography. Capture the incumbent FIRST when the target already exists; it sets the bar the challengers are
+filmed against. All artifacts land in `<project>/design/triptych/<yyyy-mm-dd>-<target-slug>/`:
+`00-incumbent.png` / `00-incumbent.mp4`, then challengers in thesis order as `01-<thesis-slug>.png` (money
+shot), `01-<thesis-slug>.mp4`, extra states as `01-<thesis-slug>--<state>.png` (double hyphen — the montage
+script keys on it).
 
 ## iOS (native / SwiftUI / UIKit) — simulator
 

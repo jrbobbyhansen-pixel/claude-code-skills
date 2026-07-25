@@ -10,7 +10,7 @@
     {
       "id": 2,
       "prompt": "mock up a few versions of the hunt log screen so i can pick one. blindbuddy repo on my desktop. show me screenshots like last time",
-      "expected_output": "Skill triggers without the slash command; scope-locks the target and key states; builds 3 divergent concepts as real RN code with real data; captures consistent-device screenshots + videos; presents a side-by-side Pick Sheet and waits.",
+      "expected_output": "Skill triggers without the slash command; scope-locks the target and key states; captures the CURRENT hunt log screen as Concept 0 (the control) under the same conditions; builds 3 divergent concepts as real RN code beside the untouched incumbent (presentation-only contract, rename-and-wrap switcher); presents a side-by-side Pick Sheet including the incumbent and waits — 'keep current' offered as a legitimate pick.",
       "files": []
     },
     {

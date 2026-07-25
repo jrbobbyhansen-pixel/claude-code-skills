@@ -66,6 +66,24 @@ No concept may lean on these as its identity (they can appear as details, never 
 - Skeuomorphic gimmicks unrelated to the brief.
 - A concept that is just the current design with more spacing.
 
+## The taste ledger — `design/triptych/TASTE.md`
+
+Every pick reveals where the owner's taste actually sits on the axes — that information is worth more than
+the winning code, and it compounds only if written down. One line per revelation, appended in Phase 5:
+
+```
+# TASTE — <app>
+2026-07-25 · insights-screen · picked: Field Data (hybrid: + Intel Hub's drill-in)
+  density: dense beat calm (2nd time — treat as settled)
+  motion: alive lost to responsive (1st signal)
+  hierarchy: number-first beat action-first
+```
+
+Phase 1 reads this before writing theses: settled axes (same pick twice) stop being tested and become the
+default position for all concepts; contested or untested axes are where the new spread should put its
+distance. The ledger is app-scoped taste, not law — note it when the brief for a new surface argues against
+a settled position, and say so in the thesis.
+
 ## Self-check before Phase 2
 
 - [ ] Every pair of theses differs on ≥3 of 6 axes (write the pairwise counts down).

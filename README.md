@@ -37,7 +37,7 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/polish`](skills/polish/SKILL.md) | Surface every UI/UX refinement, statically | 16 files |
 | [`/ship`](skills/ship/SKILL.md) | Autonomous idea-to-launch build pipeline | 9 files |
 | [`/tla-precheck`](skills/tla-precheck/SKILL.md) | Formally verify state machines via a TypeScript DSL | 3 files |
-| [`/triptych`](skills/triptych/SKILL.md) | N divergent working design concepts, captured live, owner picks | 4 files |
+| [`/triptych`](skills/triptych/SKILL.md) | N divergent working design concepts, captured live, owner picks | 6 files |
 
 **How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/triptych` front-runs the ladder: when the design direction itself is undecided, it builds real alternatives to pick from, and the winner feeds the ladder. `/elon-audit` is the deep-clean that pairs with any of them. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
 
@@ -241,9 +241,11 @@ For the fork in the road *before* the quality ladder: the direction itself is un
 
 Divergence is enforced, not hoped for: every concept declares a named thesis (*Command Center*, not "Option A") with positions on six axes — layout archetype, information hierarchy, density, motion character, visual temperature, navigation emphasis — and any two concepts must differ on ≥3 of them, checked on paper before code. A truth-in-capture rule means every image presented as a screenshot came from the running app — never an HTML fake or a generated image. After the pick, the winner is implemented for real and the losers (plus the switcher) are deleted the same session; the capture folder and `PICK-SHEET.md` remain as the permanent design record.
 
+v1.1 makes already-built screens the first-class case: the **incumbent competes** — the current design is captured under identical conditions (same data snapshot, same walkthrough script) and sits on the Pick Sheet as *Concept 0, the control*, with "keep current" a legitimate pick; variants are built beside the untouched original under a **presentation-only contract** (view code only — same services, hooks, and data, via a rename-and-wrap switcher at the route layer, with copy-before-mutate rules for shared components and a gated escape hatch when a thesis truly needs plumbing); a **taste ledger** (`design/triptych/TASTE.md`) accumulates axis-level preferences from every pick so each round probes what's still uncertain instead of re-testing settled taste; and a montage script composes the panels into a single side-by-side `pick-sheet.png`.
+
 **Use it when:** "mock up 3 versions so I can pick", "show me some directions for this screen", "explore a redesign before we commit."
 
-**Inside:** `SKILL.md` + 2 references (divergence axes/thesis doctrine, per-platform capture recipes) + starter eval prompts.
+**Inside:** `SKILL.md` + 3 references (divergence axes/thesis doctrine + taste ledger, per-platform capture recipes, built-screen contract/recipes) + a montage script + starter eval prompts.
 
 ---
 
