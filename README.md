@@ -1,6 +1,6 @@
 # Claude Code Skills Library
 
-A collection of 10 battle-tested custom skills for [Claude Code](https://claude.com/claude-code) by [Bobby Hansen Jr.](https://github.com/jrbobbyhansen-pixel) — audit engines, build pipelines, deliberation systems, and quality loops. Every skill here is the exact version I run daily, shared verbatim.
+A collection of 11 battle-tested custom skills for [Claude Code](https://claude.com/claude-code) by [Bobby Hansen Jr.](https://github.com/jrbobbyhansen-pixel) — audit engines, build pipelines, deliberation systems, and quality loops. Every skill here is the exact version I run daily, shared verbatim.
 
 Skills are markdown-defined capabilities Claude Code loads on demand. Each one lives in its own folder with a `SKILL.md` entry point, plus optional `references/` (doctrine, rubrics, templates the skill reads mid-run) and `scripts/` (deterministic Python/shell helpers).
 
@@ -37,8 +37,9 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/polish`](skills/polish/SKILL.md) | Surface every UI/UX refinement, statically | 16 files |
 | [`/ship`](skills/ship/SKILL.md) | Autonomous idea-to-launch build pipeline | 9 files |
 | [`/tla-precheck`](skills/tla-precheck/SKILL.md) | Formally verify state machines via a TypeScript DSL | 3 files |
+| [`/triptych`](skills/triptych/SKILL.md) | N divergent working design concepts, captured live, owner picks | 4 files |
 
-**How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/elon-audit` is the deep-clean that pairs with any of them. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
+**How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/triptych` front-runs the ladder: when the design direction itself is undecided, it builds real alternatives to pick from, and the winner feeds the ladder. `/elon-audit` is the deep-clean that pairs with any of them. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
 
 ---
 
@@ -229,6 +230,20 @@ Three-command workflow: start a new machine → run the design loop until it pas
 **Use it when:** building billing flows, subscription lifecycles, agent orchestration, queue processing, deployment pipelines — anywhere a state-machine bug means corrupted data, stuck users, or silent failures.
 
 **Inside:** `SKILL.md` + DSL cheatsheet + CLI workflow reference.
+
+---
+
+## `/triptych` — Three Real Ways, One Pick
+
+**N genuinely divergent design concepts of one surface, built as working code, captured on screenshot + video, laid side by side for the owner to pick.**
+
+For the fork in the road *before* the quality ladder: the direction itself is undecided. `/triptych` builds N (default 3) concepts of one target surface — a screen, a short flow, or a signature component — inside the app's real codebase, behind a throwaway variant switcher on an isolated branch, rendering the app's real data. Then it captures each one live (consistent device/viewport, screenshots of the key states plus a 10–30s interaction video) and presents a **Pick Sheet**: side-by-side captures, each concept's thesis and tradeoffs, honest fit-to-brief scores, and a hard stop — the owner picks a winner, names a hybrid ("A's layout + C's motion"), or calls another round. The skill never picks for you.
+
+Divergence is enforced, not hoped for: every concept declares a named thesis (*Command Center*, not "Option A") with positions on six axes — layout archetype, information hierarchy, density, motion character, visual temperature, navigation emphasis — and any two concepts must differ on ≥3 of them, checked on paper before code. A truth-in-capture rule means every image presented as a screenshot came from the running app — never an HTML fake or a generated image. After the pick, the winner is implemented for real and the losers (plus the switcher) are deleted the same session; the capture folder and `PICK-SHEET.md` remain as the permanent design record.
+
+**Use it when:** "mock up 3 versions so I can pick", "show me some directions for this screen", "explore a redesign before we commit."
+
+**Inside:** `SKILL.md` + 2 references (divergence axes/thesis doctrine, per-platform capture recipes) + starter eval prompts.
 
 ---
 
