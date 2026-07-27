@@ -26,6 +26,8 @@ A multi-agent readiness audit **and fix plan** that leaves whatever it touches *
 /gauntlet "hand off to the team, live by 2026-05-29"
 /gauntlet --deep --goal "payments live" --deadline 2026-05-29
 /gauntlet --deep --budget-files 25 --budget-loc 3000 --desk concurrency
+/gauntlet --estimate                       # scope + agent/token preview, spends nothing
+/gauntlet --deep --resume                  # reuse completed rounds from the last run
 ```
 
 - **`/gauntlet`** (Fast) — quick foreground triage: compressed grill, CORE desks, P0-only, top-risk sections, a short ordered P0 fix list. Minutes. Never auto-executes.
@@ -85,8 +87,9 @@ Full charters in `references/roles/{desk}.md`. Cast per project + goal (see `ref
 3. **Grill from `references/intake-templates.md`.** Ask the **Core Bar** (GOAL · DEADLINE · DEMO that must pass · who operates it UNAIDED · NON-GOALS · CRITICAL PATHS), then **only the signal blocks that fired** (billing → real-money-by-date; mobile → App Store review window; embedded → OTA/rollback; llm_app → eval/cost/latency; db → migration/backup; …). Use the **AskUserQuestion** tool for the structured bar; drop to freeform follow-ups to resolve ambiguity. Discipline: **recommend an answer first, never accept vague, read the code before asking** if the code can answer it.
 4. **Stop condition = zero guessing.** Keep a running ledger of open unknowns. Do **not** advance to STEP 2 until GOAL, DEADLINE, DEMO, each owner's unaided task, NON-GOALS, and **every fired-signal blocker** are facts you did not guess. *If you'd have to assume it to run the audit, you must ask it.* Not capped at a question count.
 5. **Lock + persist.** Write the resolved mandate to `.gauntlet/bar.json` (goal, deadline, demo, owners, non-goals, signals, critical paths). It seeds every desk prompt's `Goal under audit / Critical paths here` line.
-6. **Cast.** Run `scripts/cast.py --goal "<goal>" --mode deep` (piped from split) → deployed desks, scope, model, sections. Assign depth D1/D2/D3 by section risk.
-7. **`[CHECKPOINT]` Emit the casting table** (see `casting-rubric.md`). Confirm every planned agent's slice ≤ budget. → hand STEP 2 to the background task.
+6. **Threat-model the mapped surface** (read `references/threat-model.md`). Using the split map + manifests + docs + the locked bar, produce `.gauntlet/threats.json`: assets, trust boundaries, and STRIDE-walked threats `T1…Tn` scored by (impact, likelihood), each tagged with the sections it touches. **Hard gate — coverage rule:** every trust boundary must be the surface of ≥1 threat; an unthreatened boundary means you stopped thinking, not that it is safe. *Signals tell you what technology is present; the threat model tells you what an attacker wants and where they get in. Casting on signals alone points opus desks at whatever has the most files.*
+7. **Cast.** Run `scripts/cast.py --goal "<goal>" --mode deep` (piped from split) → deployed desks, scope, model, sections. Assign depth D1/D2/D3 by section risk, then **re-rank by threat**: a section carrying a `critical`/`existential` threat with a `remote_unauth` actor takes D3 + an opus desk whatever its extensions suggested; a section on no threat path drops a tier.
+8. **`[CHECKPOINT]` Emit the casting table** (see `casting-rubric.md`) **and the threat table** (`T-id · actor · surface · impact/likelihood · sections`). Confirm every planned agent's slice ≤ budget. → hand STEP 2 to the background task.
 
 ---
 
@@ -101,6 +104,11 @@ You are the {DESK} Desk auditing ONE bounded slice. Your operating standard and 
 
 Slice: §{section} — files (≤25 / ≤3k LOC): {file list}
 Goal under audit: {GOAL} by {DEADLINE}.   Critical paths here: {list}.
+Threats landing on this slice (from .gauntlet/threats.json):
+  {T-id}: {threat} — actor:{actor} · surface:{entry_point} · impact:{impact}/{likelihood} · controls:{controls}
+Find the vulnerabilities that COMPOSE these threats — that is what you are here for. Anything
+outside them is still reportable. A threat whose `controls` claim you can DISPROVE is a finding
+in itself. Tag each finding with the threat it serves: threat:"{T-id}" (or "none").
 
 Audit guilty-until-proven. Every finding: cite file:line, give an EXACT fix, attach an
 evidence-ledger entry {claim, evidence-type, verdict}, a stable id {desk}-{section}-{n},
@@ -184,16 +192,43 @@ Assign `model:` per the casting table: **opus** for P0 desks (Security, Money, D
 
 Authority: `references/scoring-rubric.md` (implemented by `aggregate.py`). Per-finding `impact = severity × confidence × blast`; **UNPROVEN critical path = P0-equivalent**; section 0–100 (any open P0 or UNPROVEN-crit → RED; no subtraction → capped YELLOW); overall ship-confidence %. **GO** only on zero P0 + zero UNPROVEN-crit + all critical-path live tests PASS + confidence ≥ 80. Else **NO-GO** + exact blocker count. Never hedge.
 
+## Scope Estimate (`--estimate`, and always before R1)
+
+A deep run spawns a bench of opus desks. **Preview the spend before committing it, never after.** After casting, emit and pause:
+
+```
+SCOPE ESTIMATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Sections:   N   (M over budget → sub-split to K)
+In scope:   N files · N LOC   (excluded: N files — vendored/generated/lockfiles)
+Agents:     N desks × N sections = N spawns   (opus: N · sonnet: N · haiku: N)
+Rounds:     R1-R7   est. input ≈ N tokens (slice LOC × desks-per-section × 1.3)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+`--estimate` prints this and **exits** — no agents, no spend. In a normal deep run it is the last thing before R1; if the spawn count exceeds ~40, say so plainly and offer to narrow (`--desk`, fewer sections, fast mode) before proceeding. Silent cost is a defect: a run that quietly burns an afternoon of budget is worse than one that asks.
+
+## Resume (`--resume`)
+
+Rounds are expensive and R5 field-tests are slow — a run that dies at R6 must not restart at R1. Each round writes its output under `.gauntlet/findings/{run}/` already; `--resume` reuses every completed round's artifacts and re-enters at the first incomplete one.
+
+- Run id is stable per repo (`sha1(abspath)[:12]` + date), so a resume finds its own prior run.
+- A round counts as complete only when **every** planned desk×section output for it exists — a partial round re-runs the missing slices only.
+- **Never resume across a changed tree.** If `git rev-parse HEAD` or the working-tree hash differs from what the checkpoint recorded, resume is refused for the affected sections and they re-run; stale findings against edited code are how a fix plan gets built on a bug that no longer exists.
+- `.gauntlet/history.json` already re-opens proven-green items whose files changed. Resume honors the same rule.
+
 ## Stateful Delta (`.gauntlet/`)
 
-`history.json` rolls prior runs. Every run reports deltas (`P0: 6 ▼ from 11`), resurfaces parked items past their revisit date, and **re-opens any proven-green item whose source file changed** (git hash) — green is never inherited blindly. `READINESS.md` + `FIX_PLAN.md` → repo root; the locked mandate (`bar.json`), findings, `plan.json`, and history → `.gauntlet/` (gitignore-friendly). On re-run, STEP 1 loads `bar.json` and confirms deltas rather than re-grilling.
+`history.json` rolls prior runs. Every run reports deltas (`P0: 6 ▼ from 11`), resurfaces parked items past their revisit date, and **re-opens any proven-green item whose source file changed** (git hash) — green is never inherited blindly. `READINESS.md` + `FIX_PLAN.md` → repo root; the locked mandate (`bar.json`), the threat model (`threats.json`), findings, the drop trail (`dropped.json`), `plan.json`, and history → `.gauntlet/` (gitignore-friendly). On re-run, STEP 1 loads `bar.json` and confirms deltas rather than re-grilling, and diffs the new threat model against the old one — **a newly-appeared trust boundary is a headline, not a footnote.**
 
 ## Enforcement Scans (run before the verdict)
 - **Scope gate** — refuse any agent slice over budget; sub-split first.
+- **Threat-coverage** — every trust boundary in `threats.json` is the surface of ≥1 threat, and every `critical`/`existential` threat has ≥1 desk that audited its sections. A threat nobody hunted is reported as `UNHUNTED` and scored as UNPROVEN-critical.
 - **Interaction-coverage** — every ≥2-desk file cross-checked in R2.
 - **Live-coverage** — every critical-path P0 has a Field-Test verdict or is UNPROVEN.
 - **False-positive** — any P0 challenged in R2 and undefended is downgraded with rationale.
 - **Citation-verification** — `aggregate.py` rejects any finding whose file:line doesn't exist.
+- **Drop-accounting** — every finding that leaves the punch-list leaves a receipt in the dropped appendix (`DUPLICATE`, `PHANTOM_CITATION`, `DOWNGRADED`, `DISPROVEN`, `OUT_OF_SCOPE`). A silent drop is indistinguishable from a miss. Read the appendix before trusting a clean run.
 - **Evidence gate** — no GREEN without a logged evidence ledger.
 - **Gate-integrity** — never GO with an open P0 or UNPROVEN critical path.
 - **Plan-safety** (STEP 3) — no two un-merged fixes target the same region; every P0 fix step ships a verification + a rollback.
@@ -222,11 +257,13 @@ GOAL: {…}   DEADLINE: {date}   MODE: deep   ship-confidence: {%}  ({Δ})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VERDICT: {GO / NO-GO} — {N} P0 + {K} UNPROVEN-crit between you and ship.
 
+THREATS (by impact)      {T-id} {actor} → {surface} {impact}/{likelihood} — {n} findings | UNHUNTED
 SECTIONS (worst-first)   §{name} {🟢🟡🔴} {n}/100 — {why}
-P0 — BLOCKS              {id} [desk] file:line {issue} → FIX | [USER MUST RUN]
+P0 — BLOCKS              {id} [desk] file:line {issue} → FIX | [USER MUST RUN]   threat:{T-id}
 P1 — SHOULD FIX
 P2 — PARKED (post-goal)
 CUT — {delete-list, LOC removed}
+DROPPED — {n} ({k} duplicate · {k} phantom · {k} downgraded · {k} disproven)  → .gauntlet/dropped.json
 LIVE TESTS               {n} run, {k} [USER MUST RUN]
 DELTA                    P0 {Δ} · ship-confidence {Δ} · re-opened {files}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

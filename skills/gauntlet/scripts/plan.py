@@ -34,7 +34,8 @@ import argparse, json, os, sys
 
 # Reuse the keystone's pipeline so plan + verdict never disagree about the finding set.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from aggregate import load_findings, verify_citations, dedupe, impact, is_unproven  # noqa: E402
+from aggregate import (load_findings, verify_citations, dedupe, impact,  # noqa: E402
+                       is_unproven, partition_predropped)
 
 TIER_RANK = {"P0": 0, "P1": 1, "P2": 2}
 RANK_TIER = {v: k for k, v in TIER_RANK.items()}
@@ -168,7 +169,7 @@ def render_md(order, by_id, eff, clusters, rejected, cycles, dep_warns, goal, de
     L.append(f"GOAL: {goal or '—'}   DEADLINE: {deadline or '—'}")
     n_must = sum(1 for fid in order if must_run(by_id[fid]))
     L.append(f"{len(order)} ordered fix(es) · {len(clusters)} conflict cluster(s) · "
-             f"{n_must} [USER MUST RUN] · {len(rejected)} phantom(s) dropped")
+             f"{n_must} [USER MUST RUN] · {len(rejected)} finding(s) dropped")
     L.append("Dependency-ordered. Execute top→bottom, tier by tier. Build/test gate after "
              "each tier; commit per tier; stop on any failure.")
     L.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
@@ -221,7 +222,13 @@ def render_md(order, by_id, eff, clusters, rejected, cycles, dep_warns, goal, de
 
     notes = []
     if rejected:
-        notes.append(f"{len(rejected)} finding(s) dropped as phantom citations (file:line not found).")
+        counts: dict[str, int] = {}
+        for f in rejected:
+            counts[f.get("drop_reason", "?")] = counts.get(f.get("drop_reason", "?"), 0) + 1
+        breakdown = ", ".join(f"{n} {r.lower().replace('_', ' ')}"
+                              for r, n in sorted(counts.items(), key=lambda kv: -kv[1]))
+        notes.append(f"{len(rejected)} finding(s) dropped before planning ({breakdown}) — "
+                     f"full trail in .gauntlet/dropped.json.")
     notes += cycles + dep_warns
     if notes:
         L.append("\n\n### NOTES")
@@ -248,8 +255,12 @@ def main() -> int:
 
     root = os.path.abspath(args.root)
     findings = load_findings(args.findings)
-    kept, rejected = verify_citations(findings, root)
-    kept = dedupe(kept)
+    # A finding a round already killed (R2 downgrade, R4 ruling, R5 DISPROVEN) must never
+    # reach the plan — otherwise the fix list schedules work for a bug that isn't there.
+    kept, dropped = partition_predropped(findings)
+    kept, phantoms = verify_citations(kept, root)
+    kept, dupes = dedupe(kept)
+    rejected = dropped + phantoms + dupes
     kept = [f for f in kept if f.get("status", "open") == "open"]
 
     by_id = assign_ids(kept)
@@ -285,7 +296,9 @@ def main() -> int:
             for i, fid in enumerate(order)
         ],
         "conflict_clusters": {p: c["ids"] for p, c in clusters.items()},
-        "dropped_phantoms": len(rejected),
+        "dropped": {"total": len(rejected),
+                    "by_reason": {r: sum(1 for f in rejected if f.get("drop_reason") == r)
+                                  for r in {f.get("drop_reason", "?") for f in rejected}}},
         "warnings": cycles + dep_warns,
     }
     os.makedirs(os.path.dirname(os.path.abspath(args.plan_json)), exist_ok=True)
@@ -296,7 +309,7 @@ def main() -> int:
         n_p0 = sum(1 for fid in order if eff[fid] == 0)
         print(f"fix-plan: {len(order)} step(s)  P0:{n_p0}  "
               f"conflicts:{len(clusters)}  must-run:{sum(1 for f in by_id.values() if must_run(f))}  "
-              f"phantoms-dropped:{len(rejected)}  → {args.out}, {args.plan_json}")
+              f"dropped:{len(rejected)}  → {args.out}, {args.plan_json}")
     return 0
 
 

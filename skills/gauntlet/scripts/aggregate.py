@@ -23,6 +23,16 @@ BLAST = {"local": 1.0, "section": 1.5, "systemic": 2.5}
 RISK_W = {"payments": 5, "money": 5, "billing": 5, "data": 5, "auth": 4,
           "security": 4, "core": 3, "infra": 3}
 
+# Every finding that leaves the punch-list leaves a receipt. A silent drop is
+# indistinguishable from a miss — the appendix is what makes dedupe auditable.
+DROP_REASONS = {
+    "PHANTOM_CITATION": "file:line does not exist (citation-verification)",
+    "DUPLICATE":        "collapsed into a canonical finding",
+    "DOWNGRADED":       "R2 false-positive challenge / R4 cross-exam ruling",
+    "DISPROVEN":        "R5 field-test ran it and it did not reproduce",
+    "OUT_OF_SCOPE":     "outside the desk's beat or the locked mandate",
+}
+
 
 def file_hash(path: str) -> str:
     try:
@@ -53,6 +63,32 @@ def load_findings(findings_dir: str) -> list[dict]:
     return out
 
 
+def _drop(f: dict, reason: str, detail: str = "", canonical_id: str | None = None) -> dict:
+    """Stamp a finding as dropped and return the audit-trail entry."""
+    d = dict(f)
+    d["drop_reason"] = reason
+    d["drop_detail"] = detail or DROP_REASONS.get(reason, "")
+    if canonical_id is not None:
+        d["canonical_id"] = canonical_id
+    return d
+
+
+def partition_predropped(findings: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Route findings a round already killed (R2 downgrade, R4 ruling, R5 DISPROVEN)
+    out of scoring and into the appendix. A desk sets `drop_reason`, or R5 stamps
+    evidence.verdict == DISPROVEN."""
+    kept, dropped = [], []
+    for f in findings:
+        reason = f.get("drop_reason")
+        if not reason and f.get("evidence", {}).get("verdict") == "DISPROVEN":
+            reason = "DISPROVEN"
+        if reason in DROP_REASONS:
+            dropped.append(_drop(f, reason, f.get("drop_detail", "")))
+        else:
+            kept.append(f)
+    return kept, dropped
+
+
 def verify_citations(findings: list[dict], root: str) -> tuple[list[dict], list[dict]]:
     """Reject any finding whose file:line does not exist. Doctrine: no phantoms."""
     kept, rejected = [], []
@@ -65,23 +101,67 @@ def verify_citations(findings: list[dict], root: str) -> tuple[list[dict], list[
                 ok = 1 <= int(f["line"]) <= n
             except (OSError, ValueError):
                 ok = False
-        (kept if ok else rejected).append(f)
+        if ok:
+            kept.append(f)
+        else:
+            rejected.append(_drop(f, "PHANTOM_CITATION",
+                                  f"cited {f.get('citation', f.get('file', '?'))}"))
     return kept, rejected
 
 
-def dedupe(findings: list[dict]) -> list[dict]:
-    by_key: dict[tuple, dict] = {}
+def _dupe_rank(f: dict) -> tuple:
+    """Strongest report wins the collision: severity, then confidence, then proven-ness.
+
+    First-seen-wins would let a P1 swallow a P0 filed on the same line by another desk —
+    the merge still promoted the severity, but the survivor kept the weaker desk's `fix`
+    text and id, so the punch-list shipped the wrong remedy for the right bug."""
+    return (SEV_W.get(f.get("severity"), 0),
+            float(f.get("confidence", 0)),
+            0 if is_unproven(f) else 1)
+
+
+def dedupe(findings: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Collapse (file, line, type) collisions. Returns (canonical, dropped-duplicates).
+
+    The survivor is the strongest report (see `_dupe_rank`) and inherits the union of
+    desks plus the max severity/confidence — collapsing loses the duplicate row, never
+    the signal. Input order is preserved for the surviving findings."""
+    groups: dict[tuple, list[dict]] = {}
+    order: list[tuple] = []
     for f in findings:
         key = (f.get("file"), f.get("line"), f.get("type"))
-        if key in by_key:
-            cur = by_key[key]
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(f)
+
+    canonical: list[dict] = []
+    dropped: list[dict] = []
+    for key in order:
+        rows = groups[key]
+        best = max(rows, key=_dupe_rank)
+        cur = dict(best)
+        for f in rows:
+            if f is best:
+                continue
+            dropped.append(_drop(
+                f, "DUPLICATE",
+                f"same {f.get('file')}:{f.get('line')} / {f.get('type')} as "
+                f"{cur.get('id', '(canonical)')} [{cur.get('desk')}]",
+                canonical_id=cur.get("id"),
+            ))
             cur["desk"] = ",".join(sorted(set(str(cur["desk"]).split(",") + [str(f["desk"])])))
+            # Every field that feeds scoring takes the worst case across the collision.
+            # Merging only severity/confidence silently discarded a desk's `systemic`
+            # blast or `critical_path` call, under-scoring the surviving finding.
             if SEV_W.get(f["severity"], 0) > SEV_W.get(cur["severity"], 0):
                 cur["severity"] = f["severity"]
             cur["confidence"] = max(cur["confidence"], f["confidence"])
-        else:
-            by_key[key] = dict(f)
-    return list(by_key.values())
+            if BLAST.get(f.get("blast"), 0) > BLAST.get(cur.get("blast"), 0):
+                cur["blast"] = f["blast"]
+            cur["critical_path"] = bool(cur.get("critical_path")) or bool(f.get("critical_path"))
+        canonical.append(cur)
+    return canonical, dropped
 
 
 def is_unproven(f: dict) -> bool:
@@ -166,7 +246,7 @@ def reopened_green(hist: dict, root: str) -> list[str]:
     return out
 
 
-def render(cur, rejected, hist, root, goal, deadline) -> str:
+def render(cur, dropped, hist, root, goal, deadline) -> str:
     L = []
     L.append("# READINESS — gauntlet\n")
     L.append(f"**Goal:** {goal or '—'}  **Deadline:** {deadline or '—'}\n")
@@ -191,10 +271,23 @@ def render(cur, rejected, hist, root, goal, deadline) -> str:
         L.append(f"- {emoji} **§{name}** — {s['readiness']}/100 · "
                  f"{s['p0']} P0 · {s['unproven_crit']} unproven-crit · {s['findings']} findings"
                  f"{'' if s['razor'] else ' · ⚠ subtraction not run'}")
-    if rejected:
-        L.append(f"\n## Rejected (phantom citations — file:line not found): {len(rejected)}\n")
-        for f in rejected[:10]:
-            L.append(f"- ~~{f.get('citation', f.get('file'))}~~ ({f.get('desk')}/{f.get('type')})")
+    if dropped:
+        by_reason: dict[str, list[dict]] = {}
+        for f in dropped:
+            by_reason.setdefault(f.get("drop_reason", "?"), []).append(f)
+        L.append(f"\n## Dropped findings — audit trail: {len(dropped)}\n")
+        L.append("_Raised by a desk, removed before the punch-list. Listed so dedupe and "
+                 "downgrades are auditable, not silent. Scan this before trusting a clean run._\n")
+        for reason in sorted(by_reason, key=lambda r: -len(by_reason[r])):
+            rows = by_reason[reason]
+            L.append(f"\n**{reason}** ({len(rows)}) — {DROP_REASONS.get(reason, '')}\n")
+            for f in rows[:10]:
+                cite = f.get("citation") or f"{f.get('file')}:{f.get('line')}"
+                canon = f" → canonical `{f['canonical_id']}`" if f.get("canonical_id") else ""
+                L.append(f"- ~~{cite}~~ [{f.get('desk')}/{f.get('type')}] "
+                         f"{f.get('severity', '?')} — {f.get('drop_detail', '')}{canon}")
+            if len(rows) > 10:
+                L.append(f"- _…{len(rows) - 10} more — see `.gauntlet/dropped.json`_")
     L.append("\n_Full punch-list, evidence ledger, and live-test scripts follow in the inline report._\n")
     return "\n".join(L) + "\n"
 
@@ -212,8 +305,10 @@ def main() -> int:
 
     root = os.path.abspath(args.root)
     findings = load_findings(args.findings)
-    kept, rejected = verify_citations(findings, root)
-    kept = dedupe(kept)
+    kept, dropped = partition_predropped(findings)
+    kept, phantoms = verify_citations(kept, root)
+    kept, dupes = dedupe(kept)
+    dropped += phantoms + dupes
     cur = score(kept)
     hist = {}
     if args.history and os.path.isfile(args.history):
@@ -222,8 +317,19 @@ def main() -> int:
         except (OSError, json.JSONDecodeError):
             hist = {}
 
-    md = render(cur, rejected, hist, root, args.goal, args.deadline)
+    md = render(cur, dropped, hist, root, args.goal, args.deadline)
     open(args.out, "w").write(md)
+
+    # Full trail — READINESS.md caps each reason at 10 rows, this keeps every one.
+    if dropped:
+        trail = os.path.join(os.path.dirname(os.path.abspath(args.findings)) or ".",
+                             "..", "dropped.json")
+        trail = os.path.normpath(trail)
+        try:
+            os.makedirs(os.path.dirname(trail), exist_ok=True)
+            json.dump(dropped, open(trail, "w"), indent=2)
+        except OSError as e:
+            print(f"  ! could not write {trail}: {e}", file=sys.stderr)
 
     if args.history:
         pg = {f["file"]: file_hash(os.path.join(root, f["file"]))
@@ -234,9 +340,12 @@ def main() -> int:
                   open(args.history, "w"), indent=2)
 
     if not args.quiet:
+        drop_bits = ", ".join(f"{r.lower()}: {sum(1 for f in dropped if f.get('drop_reason') == r)}"
+                              for r in DROP_REASONS
+                              if any(f.get("drop_reason") == r for f in dropped)) or "none"
         print(f"verdict: {'GO' if cur['go'] else 'NO-GO'}  ship-confidence: {cur['ship_confidence']}%  "
               f"P0: {cur['p0']}  unproven-crit: {cur['unproven_crit']}  "
-              f"rejected-phantoms: {len(rejected)}  → {args.out}")
+              f"dropped: {len(dropped)} ({drop_bits})  → {args.out}")
     return 0
 
 

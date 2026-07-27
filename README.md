@@ -31,7 +31,7 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/council`](skills/council/SKILL.md) | 22-persona multi-round deliberation on hard decisions | 30 files |
 | [`/elon-audit`](skills/elon-audit/SKILL.md) | First-principles audit of 100% of a codebase | 1 file |
 | [`/feel`](skills/feel/SKILL.md) | Conform an app to a fixed interaction-feel standard | 6 files |
-| [`/gauntlet`](skills/gauntlet/SKILL.md) | Goal-anchored ship-readiness audit + fix plan | 32 files |
+| [`/gauntlet`](skills/gauntlet/SKILL.md) | Goal-anchored ship-readiness audit + fix plan | 33 files |
 | [`/grill-me`](skills/grill-me/SKILL.md) | Relentless plan interviewer + missed-idea surfacer | 1 file |
 | [`/loom`](skills/loom/SKILL.md) | Platform for self-running, verified quality loops | 40 files |
 | [`/polish`](skills/polish/SKILL.md) | Surface every UI/UX refinement, statically | 16 files |
@@ -92,16 +92,21 @@ Supports multi-provider model routing (Anthropic, OpenAI, xAI, OpenRouter, Gemin
 
 **Every file read. Every bug surfaced. Every fix specified to the line.**
 
-A surgical, zero-mercy audit of an entire repository, run in five phases modeled on first-principles manufacturing review:
+A surgical, zero-mercy audit of an entire repository, run in phases modeled on first-principles manufacturing review:
 
-1. **Inventory** — sense the atoms: parallel agents over bounded slices, each returning a coverage receipt; the audit cannot proceed until `UNMAPPED = ∅` — **coverage is proven, never claimed**
+0. **Scope Estimate** — files, LOC, slices, agent count, estimated tokens, printed *before* anything spawns; `--estimate` prints it and exits. Silent cost is a defect.
+1. **Inventory** — sense the atoms: build the manifest, detect the build command
+1.5. **Threat Model** — model the attack surface *before* any agent reads code: assets, trust boundaries, and STRIDE-walked threats `T1…Tn` scored by impact × likelihood. Every trust boundary must be the surface of ≥1 threat. *A threat survives a patch; a vulnerability doesn't* — so the sweep hunts named targets instead of a generic checklist
+1.6. **Dispatch** — parallel agents over bounded slices, each carrying the threats that land on its files and returning a coverage receipt; the audit cannot proceed until `UNMAPPED = ∅` **and** `UNHUNTED = ∅` — **coverage is proven, never claimed**
 2. **Physics Test** — prove it works: verify claimed behavior against actual code paths
 3. **Delete/Trim** — ruthless 80/20: dead code, unused deps, unreachable branches
-4. **Risk/Edge Proof** — hunt unhandled edges, race conditions, hardcoded secrets, silent failures
+4. **Risk/Edge Proof** — hunt unhandled edges, race conditions, hardcoded secrets, silent failures; severity is threat-anchored, so a bug on a critical/almost-certain path outranks one nothing can reach
 5. **Cross-Examination** — fresh-context adversarial verifiers try to *refute* every P0 (plus a P1/P2 sample) before anything executes; the kill rate is reported honestly — the maker never grades itself
 6. **Handoff** — one dependency-ordered, executable fix plan, ranked P0 → P2
 
-Every finding carries evidence under **the Finding Contract**: `[PROVEN]` (executed or traced this run, receipts attached) or `[SUSPECTED]` (pattern-matched) — and a suspected P0 can never execute unverified. The philosophy is honesty-first: every finding ships with a specific fix or an explicit `[NEEDS MANUAL CONFIRM]` — no vague recommendations, no nice-to-haves. Output includes an inline report and (when your wiki exists) an Obsidian-ready audit note with health scores.
+Every finding carries evidence under **the Finding Contract**: `[PROVEN]` (executed or traced this run, receipts attached) or `[SUSPECTED]` (pattern-matched) — and a suspected P0 can never execute unverified. Every finding that *leaves* the report leaves a receipt too: **the Dropped Appendix** records each removal as `DUPLICATE` / `PHANTOM` / `REFUTED` / `DOWNGRADED` / `OUT_OF_SCOPE`, because a silent drop is indistinguishable from a miss. Long runs checkpoint per phase, so `--resume` re-enters at the first incomplete one (and refuses to resume across a changed tree). The philosophy is honesty-first: every finding ships with a specific fix or an explicit `[NEEDS MANUAL CONFIRM]` — no vague recommendations, no nice-to-haves. Output includes an inline report and (when your wiki exists) an Obsidian-ready audit note with health scores.
+
+*The threat-model, scope-estimate, dropped-appendix, and checkpoint patterns are adapted from [Visa's Vulnerability Agentic Harness](https://github.com/visa/visa-vulnerability-agentic-harness) (Apache-2.0).*
 
 **Use it when:** you want to ruthlessly debug, clean, and harden a project in one command.
 
@@ -131,15 +136,19 @@ First-class support for React Native (Reanimated) and React web (Framer Motion /
 
 Every finding is gated on a concrete mandate — goal, deadline, demo path — so the audit never devolves into a generic nitpick list. Three steps:
 
-1. **GRILL** — a project-adaptive interview that locks the mandate with zero guessing (borrowed from `/grill-me`)
-2. **AUDIT** — bounded-slice, multi-desk deliberation rounds: sweep → cross-desk → red-team → cross-examination → **live field-test** (it actually runs your demo path) → subtraction pass. Returns ONE deduplicated punch-list and a quantitative **GO/NO-GO** verdict.
+1. **GRILL** — a project-adaptive interview that locks the mandate with zero guessing (borrowed from `/grill-me`), then **threat-models the mapped surface** into `threats.json` before casting: assets, trust boundaries, STRIDE-walked threats scored by impact × likelihood, with a hard coverage rule that every boundary carries ≥1 threat. Signals tell you what technology is present; the threat model tells you what an attacker wants — so desks get cast and depth-ranked by attack path, not by which section has the most files.
+2. **AUDIT** — bounded-slice, multi-desk deliberation rounds: sweep → cross-desk → red-team → cross-examination → **live field-test** (it actually runs your demo path) → subtraction pass. Each desk prompt names the threats landing on its slice and hunts the vulnerabilities that compose them. Returns ONE deduplicated punch-list and a quantitative **GO/NO-GO** verdict.
 3. **FIX PLAN** — dependency-ordered, conflict-checked, verifiable remediation with opt-in tier-by-tier execution (borrowed from `/elon-audit`)
 
-The bench holds 20 specialist desk charters — security, money/billing, privacy, concurrency, reliability, performance, mobile, embedded, ML-inference, AI/LLM-app, API contracts, build/release, dependencies, data, copy/UX, and more — cast per-project by a rubric so you only pay for relevant desks. The **bounded-slice guarantee** keeps every desk's context under control on large repos. Stateful across runs: each project keeps a persistent quality bar in `.gauntlet/` so re-audits measure deltas.
+The bench holds 20 specialist desk charters — security, money/billing, privacy, concurrency, reliability, performance, mobile, embedded, ML-inference, AI/LLM-app, API contracts, build/release, dependencies, data, copy/UX, and more — cast per-project by a rubric so you only pay for relevant desks. The **bounded-slice guarantee** keeps every desk's context under control on large repos. `--estimate` previews the spawn count and token scope before a single agent runs; `--resume` re-enters a died run at the first incomplete round. Stateful across runs: each project keeps a persistent quality bar in `.gauntlet/` so re-audits measure deltas — and a newly-appeared trust boundary is reported as a headline, not a footnote.
+
+**Nothing disappears quietly.** Every finding removed before the punch-list lands in the **dropped appendix** (`.gauntlet/dropped.json` + a READINESS.md section) tagged `DUPLICATE` / `PHANTOM_CITATION` / `DOWNGRADED` / `DISPROVEN` / `OUT_OF_SCOPE`, with a pointer to the canonical finding for duplicates. Dedupe keeps the *strongest* report — highest severity, then confidence, then proven-over-suspected — so the surviving fix is the one worth executing, while the worst-case blast radius and critical-path flag carry over from every collapsed row.
 
 **Use it when:** "are we ready to launch?", "run it through the gauntlet", "make me a fix plan" — any time readiness must be judged against a real goal and date.
 
-**Inside:** `SKILL.md` + 26 references (doctrine, casting/scoring rubrics, failure modes, field-test playbook, intake templates, 19 role charters, a worked readiness example) + 5 scripts (cast, split, aggregate, plan, field-test scaffold).
+**Inside:** `SKILL.md` + 27 references (doctrine, threat-model guide, casting/scoring rubrics, failure modes, field-test playbook, intake templates, 19 role charters, a worked readiness example) + 5 scripts (cast, split, aggregate, plan, field-test scaffold).
+
+*The threat-model, scope-estimate, and dropped-appendix patterns are adapted from [Visa's Vulnerability Agentic Harness](https://github.com/visa/visa-vulnerability-agentic-harness) (Apache-2.0).*
 
 ---
 

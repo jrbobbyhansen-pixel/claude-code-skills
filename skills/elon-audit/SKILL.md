@@ -1,6 +1,6 @@
 ---
 name: elon-audit
-description: First-principles surgical audit of an entire codebase. Scours 100% of files via parallel agents with receipt-verified coverage (UNMAPPED must be empty), surfaces every bug/waste/risk ranked P0→P2 with exact fixes and proven-vs-suspected evidence, cross-examines its own findings with adversarial verifiers before anything executes, delivers a dependency-ordered executable plan. One command. Use when you want to ruthlessly debug, clean, and supercharge a project.
+description: First-principles surgical audit of an entire codebase. Previews its own scope/cost before spending, threat-models the attack surface so the sweep hunts named targets instead of a generic checklist, scours 100% of files via parallel agents with receipt-verified coverage (UNMAPPED and UNHUNTED must both be empty), surfaces every bug/waste/risk ranked P0→P2 with exact fixes and proven-vs-suspected evidence, cross-examines its own findings with adversarial verifiers before anything executes, records every dropped finding in an audit trail, checkpoints so a long run can resume, and delivers a dependency-ordered executable plan. One command. Use when you want to ruthlessly debug, clean, and supercharge a project.
 ---
 
 # Elon Audit — First-Principles Codebase Audit
@@ -16,9 +16,35 @@ Surgical, zero-mercy audit of the entire repo. Every file read. Every bug surfac
 ```
 /elon-audit
 /elon-audit --build "xcodebuild -scheme KeepApp -destination 'platform=iOS Simulator,name=iPhone 16'"
+/elon-audit --estimate      # scope + agent/token preview, spends nothing
+/elon-audit --resume        # re-enter at the first incomplete phase
 ```
 
 Runs against current working directory. `cd` to the project first.
+
+**Checkpoints.** After each phase, write its output to `.elon-audit/<run-id>/phase-N.json` (`run-id` = `sha1(abspath)[:12]`). A whole-repo audit is a long, expensive run; one that dies in Phase 4 must not restart at Phase 1. `--resume` reloads completed phases and re-enters at the first incomplete one.
+
+**Never resume across a changed tree.** Each checkpoint records `git rev-parse HEAD` plus a hash of the working tree. If either moved, the affected phases re-run rather than resume — findings against code that has since been edited are how a fix plan gets built on a bug that no longer exists.
+
+---
+
+## Phase 0 — Scope Estimate (spend nothing, decide first)
+
+**Goal:** Know what this run costs before it starts. Silent cost is a defect.
+
+Count files, LOC, and the slices they imply; derive the agent count; state it and pause.
+
+```
+SCOPE ESTIMATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+In scope:   N files · N LOC   (excluded: N vendored/generated/lockfile/binary)
+Slices:     N  (≤15 files / ≤2,500 LOC each)
+Agents:     N sweep + N verifiers ≈ N spawns
+Est. input: ≈ N tokens  (in-scope LOC × ~1.3, read once per sweep + once per verify)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+`/elon-audit --estimate` prints this and **exits**. Otherwise: if the run implies more than ~40 agents, say so and offer to narrow (a subdirectory, `--since <ref>` for changed files only) before continuing. Never start a large run without the user seeing the number.
 
 ---
 
@@ -35,15 +61,51 @@ Runs against current working directory. `cd` to the project first.
    - `requirements.txt` / `pyproject.toml` → `pip install -e . && python -m pytest`
    - Multiple stacks → run all, report independently
    - None detected → emit `[NEEDS CONFIRM]`, pause for user input before continuing
-4. Build the file manifest, then slice it into bounded batches — ≤15 files or ≤2,500 LOC per agent, whichever binds
-   first (split oversized
-   directories, merge tiny ones). Spawn parallel Agent subagents, one per slice, 3 at a time, sequential between
-   batches. Each agent reads 100% of its slice and returns structured findings `{file, line, type, severity,
-   evidence, fix}` PLUS `covered_files[]` — its coverage receipt.
-5. Stitch the receipts: `UNMAPPED = manifest − ∪covered_files`. UNMAPPED ≠ ∅ → dispatch a sweeper agent for the
+4. Build the file manifest. **Stop here — do not spawn yet.**
+
+### Phase 1.5 — Threat Model (before any agent reads code)
+
+*Adapted from Visa's VVAH (Apache-2.0) stage S2. The sweep is only as good as what it's hunting.*
+
+A generic P0/P1/P2 checklist finds checklist bugs. A slice agent pointed at a named threat finds the three
+vulnerabilities that compose it. So model the attack surface first, from the manifest + manifests/docs/config
+(structure, not source bodies):
+
+> **A threat survives a patch.** "Force-unwrap at `Sync.swift:88`" is a **vulnerability**;
+> "silent data loss when the sync token expires mid-write" is a **threat**. Produce threats.
+
+1. **SYSTEM CONTEXT** — what this is, what it does, who runs it, where.
+2. **ASSETS** — what it protects or produces (user data, credentials, money, process integrity, availability;
+   for agent/LLM systems, the *tool-call capability itself*). Sensitivity `low|medium|high|critical`.
+3. **TRUST BOUNDARIES** — every place untrusted input enters or privilege changes. Name the crossing
+   (`"unauth network → route handler"`, `"inbound webhook → write path"`).
+4. **THREATS** — per boundary, walk STRIDE and emit the plausible ones as `T1…Tn` with
+   `{threat, actor, surface, asset, impact, likelihood, controls}`, sorted by (impact, likelihood).
+5. **OPEN QUESTIONS** — what the snapshot can't answer. These are `[NEEDS MANUAL CONFIRM]`, never assumptions.
+
+**Coverage rule (hard gate):** every trust boundary must be the surface of ≥1 threat. An unthreatened boundary
+is where the real bug is hiding — this is the attack-surface twin of `UNMAPPED = ∅`.
+
+Map each `T-id` to the slices it touches. Write to `.elon-audit/threats.json`.
+
+### Phase 1.6 — Dispatch (sweep with a target)
+
+5. Slice the manifest into bounded batches — ≤15 files or ≤2,500 LOC per agent, whichever binds first (split
+   oversized directories, merge tiny ones). Spawn parallel Agent subagents, one per slice, 3 at a time,
+   sequential between batches. **Each slice prompt carries the threats landing on it:**
+   ```
+   Threats on this slice: T3 (remote_unauth → webhook handler, critical/likely, controls: none)
+   Find the vulnerabilities that compose these. Anything outside them is still reportable.
+   Tag each finding threat:"T3" (or "none"). Disproving a threat's `controls` claim is itself a finding.
+   ```
+   Each agent reads 100% of its slice and returns structured findings `{file, line, type, severity, evidence,
+   fix, threat}` PLUS `covered_files[]` — its coverage receipt.
+6. Stitch the receipts: `UNMAPPED = manifest − ∪covered_files`. UNMAPPED ≠ ∅ → dispatch a sweeper agent for the
    remainder and re-assert. The audit does not proceed past Phase 1 until UNMAPPED = ∅ — **coverage is proven,
-   never claimed.**
-6. Collect all findings. Deduplicate. Build dependency graph across all findings.
+   never claimed.** Same gate on threats: a `critical`/`existential` threat that no slice agent hunted is
+   reported `UNHUNTED` and treated as an open P0-equivalent risk, not as silence.
+7. Collect all findings. Deduplicate — **recording every drop** (see The Dropped Appendix). Build dependency
+   graph across all findings.
 
 **Output:**
 ```
@@ -53,8 +115,10 @@ Total files:     N
 Total LOC:       N
 Primary stack:   [detected]
 Build command:   [detected or confirmed]
+Threats:         N across N trust boundaries (N critical+) — coverage rule ✓
 Agents spawned:  N across N slices
 Coverage:        N/N files read — UNMAPPED: 0 ✓ (receipt-verified)
+                 N/N threats hunted — UNHUNTED: 0 ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -92,7 +156,25 @@ Every finding carries `evidence` — no naked findings:
   downgraded to `[NEEDS MANUAL CONFIRM]` before the execution phase — no exceptions. Suspected P1/P2 execute only
   behind their tier's build gate.
 
-Schema: `{file, line, type, severity, evidence: proven|suspected, fix}`.
+Schema: `{file, line, type, severity, evidence: proven|suspected, fix, threat}`.
+
+---
+
+## The Dropped Appendix (every removal leaves a receipt)
+
+Findings die in three places: dedupe (Phase 1.6), cross-examination (Phase 4.5), and scope calls. **A silent drop is indistinguishable from a miss.** Every finding that leaves the report is recorded with a reason:
+
+| Reason | Raised where | Means |
+|---|---|---|
+| `DUPLICATE` | Phase 1.6 dedupe | collapsed into a canonical finding (record which) |
+| `PHANTOM` | any | cited `file:line` doesn't exist — the agent hallucinated the location |
+| `REFUTED` | Phase 4.5 | a verifier produced counter-evidence |
+| `DOWNGRADED` | Phase 4.5 | survived as real but at a lower tier (record from → to) |
+| `OUT_OF_SCOPE` | any | outside the audit's stated bounds |
+
+**Dedupe rule:** when two findings collide on `(file, line, type)`, the survivor is the **strongest report** — highest severity, then highest confidence, then proven-over-suspected — so the surviving `fix` is the one worth executing. The survivor inherits the *worst case* of every field that feeds severity (blast radius, critical-path flag) from all collapsed rows: collapsing loses the duplicate row, never the signal.
+
+Write the full trail to `.elon-audit/dropped.json` and summarize it in `AUDIT.md`. Read it before trusting a clean run — a P0 that vanished into a `DUPLICATE` of a P2 is the failure mode this appendix exists to catch.
 
 ---
 
@@ -150,6 +232,8 @@ Schema: `{file, line, type, severity, evidence: proven|suspected, fix}`.
 
 **Dependency rule:** If any fix depends on another fix in a lower tier, that dependency is promoted up. The dependency graph built in Phase 1 is enforced throughout execution. Nothing moves down until its tier is 100% complete and verified.
 
+**Threat-anchored severity.** The tier lists above are the floor, not the ranking. Within a tier, order by the threat each finding serves: a bug on a `critical`/`almost_certain` path with `controls: none` outranks one on a `low`/`rare` path with a control in place. A finding on **no** threat path is capped at P1 unless it argues a trust boundary the Phase 1.5 model missed — and that argument is itself a finding worth raising, because it means the map was wrong.
+
 ---
 
 ## Phase 4.5 — Cross-Examination (The Maker Never Grades Itself)
@@ -160,8 +244,9 @@ never the authoring reasoning. Their single job is to REFUTE.
 1. Every P0 gets a verifier; P1/P2 get a ≥20% sample (the whole tier if it's small).
 2. A verifier re-derives the finding from the code: reproduce the proof, or produce the counter-evidence. A verifier
    that independently demonstrates a [SUSPECTED] finding upgrades it to [PROVEN].
-3. Refuted → cut or downgraded, refutation logged in the report; a refuted finding's dependents are re-checked
-   before the plan is presented. Survived → confirmed.
+3. Refuted → cut or downgraded, and recorded in the Dropped Appendix as `REFUTED` / `DOWNGRADED` with the
+   counter-evidence — never deleted silently; a refuted finding's dependents are re-checked before the plan is
+   presented. Survived → confirmed.
 4. Report the kill rate honestly: `P0: 12 raised → 9 confirmed · 3 refuted`. A 0% refute rate on a large audit is a
    smell, not a flex.
 
@@ -173,12 +258,14 @@ widen the sample before presenting the plan.
 
 ## Phase 5 — Handoff (Holy Shit Done)
 
-1. Write `AUDIT.md` to repo root — full findings (with evidence + cross-exam stats), fix list, tier breakdown,
-   before/after stats
-2. If `~/clawd/wiki/` exists: write the audit note to `~/clawd/wiki/systems/[appname]-audit-YYYY-MM-DD.md` (format
+1. Write `AUDIT.md` to repo root — full findings (with evidence + cross-exam stats), the threat model table,
+   fix list, tier breakdown, the dropped appendix summary, before/after stats
+2. Leave the machine-readable trail in `.elon-audit/`: `threats.json`, `dropped.json`, and the phase checkpoints.
+   Add `.elon-audit/` to `.gitignore` if it isn't already — it's run state, not source.
+3. If `~/clawd/wiki/` exists: write the audit note to `~/clawd/wiki/systems/[appname]-audit-YYYY-MM-DD.md` (format
    below) and update `~/clawd/wiki/projects/[appname].md` with `Last audited: YYYY-MM-DD → [[systems/...]]`.
    If it doesn't exist: skip both and say so — never invent the tree.
-3. Update Claude auto-memory: project name, audit date, P-tiers completed, top 3 findings, health status
+4. Update Claude auto-memory: project name, audit date, P-tiers completed, top 3 findings, health status
 
 ---
 
@@ -216,24 +303,32 @@ INVENTORY        [summary] — Coverage: N/N files, UNMAPPED: 0 ✓
 PHYSICS TEST     PASS/FAIL — N warnings, N errors
 CROSS-EXAM       P0: N raised → N confirmed · N refuted | P1/P2 sample: N checked → N confirmed
 
+THREAT MODEL     N threats / N boundaries — UNHUNTED: 0 ✓
+──────────────────────────────────────────────────
+[T-id]  [actor] → [surface]  [impact]/[likelihood]  controls: [...]   → N findings
+
 P0 KILL SHOTS    N confirmed
 ──────────────────────────────────────────────────
-[ID]  [file:line]  [PROVEN|SUSPECTED]  [issue]
+[ID]  [file:line]  [PROVEN|SUSPECTED]  [T-id]  [issue]
       FIX: [exact command or diff]
 
 P1 PERF/WASTE    N confirmed
 ──────────────────────────────────────────────────
-[ID]  [file:line]  [PROVEN|SUSPECTED]  [issue]
+[ID]  [file:line]  [PROVEN|SUSPECTED]  [T-id]  [issue]
       FIX: [exact command or diff]
 
 P2 SUPERCHARGE   N confirmed
 ──────────────────────────────────────────────────
-[ID]  [file:line]  [PROVEN|SUSPECTED]  [issue]
+[ID]  [file:line]  [PROVEN|SUSPECTED]  [T-id]  [issue]
       FIX: [exact command or diff]
 
 DEPENDENCY ORDER
 ──────────────────────────────────────────────────
 [Any promotions or reorderings]
+
+DROPPED          N (N duplicate · N phantom · N refuted · N downgraded)
+──────────────────────────────────────────────────
+[file:line]  [reason]  [detail / canonical id]        → .elon-audit/dropped.json
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Total: N fixes | 3 commits | Build gate per tier

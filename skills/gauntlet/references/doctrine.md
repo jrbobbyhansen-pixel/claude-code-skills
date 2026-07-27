@@ -6,7 +6,7 @@ Every desk and the Publisher inherit this. Paste it into every Agent prompt. It 
 
 ## 0. The Bounded-Slice Guarantee (the line between gauntlet and elon-audit)
 
-**No reasoning agent ever sees the whole codebase.** elon-audit's flaw is that it points agents at the entire repo, so attention is diluted and depth is shallow. Gauntlet refuses that.
+**No reasoning agent ever sees the whole codebase.** Diluted attention is shallow depth. Both gauntlet and elon-audit slice (25 files / 3k LOC here, 15 / 2.5k there — gauntlet's budget is in fact the looser one). The difference is **enforcement and structure**: the Publisher *refuses to spawn* an over-budget agent rather than trusting the slice to hold, and "global" concerns (secrets, dead code, deps) are structurally forbidden from becoming a whole-repo pass — they fan out or candidate-focus. A budget nobody enforces is a suggestion.
 
 - Every audit agent gets a **focused slice ≤ 25 files / 3,000 LOC** (tunable via `--budget`). Depth comes from narrow scope.
 - A slice over budget **sub-splits** (sub-modules, each its own bounded pass) until it fits. The Publisher refuses to spawn an over-budget agent.
