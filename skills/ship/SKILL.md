@@ -95,7 +95,14 @@ Everything else: pick the sensible default, **log the decision in `SHIP.md`**, c
 Never deploy without an explicit human tap. Launch:
 1. `scripts/summarize.py` assembles the deploy summary: what changed · acceptance criteria met · review verdict · tests run/passed · the **exact** deploy command · rollback steps. Append to `SHIP.md`.
 2. Push the `ship/<slug>` branch → produce a preview (Vercel preview URL / TestFlight / PR).
-3. **Notify + wait.** Present the summary + preview link; ask for the one tap. `--yolo` skips this *only* for changes you pre-blessed as trivial (docs/copy); `--no-deploy` never offers it.
+3. **Notify + wait — with a recommendation, never a bare summary** (Decision Contract D1). The crew just ran the tests, the adversarial review, and the acceptance criteria; it knows whether this should go out. State it, then ask for the one tap:
+   ```
+   RECOMMENDED — DEPLOY   (P0:0 · P1:0 · tests 34/34 · criteria 6/6 · smoke-test armed)
+     Rollback: <exact command> — <n>s to reverse   [REVERSIBLE]
+     Not covered: <what the gate did NOT prove>
+   ```
+   or, just as decisively, `RECOMMENDED — HOLD` with the one blocker named. A summary that makes the operator infer the verdict is doing half the job. `--yolo` skips the tap *only* for changes pre-blessed as trivial (docs/copy); `--no-deploy` never offers it.
+   **Deploy itself is `[ONE-WAY]`** (D2) — it is never inside a bulk yes and never auto-taken from a recommendation, no matter how green. The recommendation informs the tap; it does not replace it.
 4. On approval, run the `profile.launch_adapter` playbook (`references/profile-adapters.md`): merge → main (Vercel = prod) / tag `v*` (fastlane staged rollout) / `eas submit` / open PR.
 5. **Post-deploy smoke test.** Hit the deployed surface; if it fails → **auto-rollback** (Vercel revert / halt rollout) + notify. Never leave prod broken silently.
 

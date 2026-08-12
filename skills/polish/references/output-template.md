@@ -103,7 +103,9 @@ Copy 9 (4 obj · 5 conv · 0 taste) → A11y 7 (7 obj · 0 · 0) → Motion 14 (
 Copy 9 (4obj·5conv) → A11y 7 (7obj) → Motion 14 (3conv·11taste) → States 11 → Type 12 → … = 64 (22 obj · 30 conv · 12 taste)
 ★ Signature wins: accessibilityLabels on icon buttons · skeleton loaders on Dashboard · empty-state for Logs
 ↳ wrote .polish/POLISH.md · 3 [NEW CODE] · 1 [REQUIRES DEP] · 1 conflict · 0 unswept
-Apply?  [ ALL · by desk · pick <ids> · none ]   (TASTE / NEW CODE / REQUIRES DEP / CONFLICT are pick-only)
+RECOMMENDED — apply 52 of 64  (22 obj · 30 conv · all [REVERSIBLE])   ★ 3 signature wins included
+  Holding back: 12 TASTE · 3 [NEW CODE] · 1 [REQUIRES DEP] ([ONE-WAY]) · 1 CONFLICT  → name them to include
+  `go` · `go except <ids>` · `pick <ids>` · `none`
 ```
 After applying, one line per batch: `✓ A11y (7) — tsc+eslint pass · 7 ticked` ·
 `⟳ Motion (5) — 2 snapshots updated (review), Tier-A green · 5 ticked` ·

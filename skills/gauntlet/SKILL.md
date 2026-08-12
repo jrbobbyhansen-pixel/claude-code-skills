@@ -315,4 +315,11 @@ Execute top→bottom, tier by tier; build/test gate + commit after each tier; st
 - **Don't fake-run real money or destructive prod actions** — `[USER MUST RUN]` with a predicted result, always.
 - **Never apply two conflicting patches blind.** If `plan.py` flagged a file cluster, the Remediation desk merges them into one coordinated edit.
 - **Execution is opt-in and gated.** Per-tier build/test gate + commit, stop on the first failure, explicit approval required. Never auto-run a `[USER MUST RUN]` step.
+- **Reversibility classes** (Decision Contract D2). Every fix in the plan carries one, and `plan.json` records it:
+  **`[REVERSIBLE]`** = the fix lands inside a per-tier commit and is undone by one `git revert` — the only class that
+  rides inside a tier-level yes. **`[STICKY]`** = undoable by hand only (a config edit outside the repo, a
+  regenerated lockfile) — named individually before it runs. **`[ONE-WAY]`** = a migration, a data drop, a
+  dependency install, a publish, anything `[USER MUST RUN]` — **never** inside a bulk approval, always its own
+  sentence and its own yes. The Remediation desk already writes a rollback per step; the class is simply the honest
+  summary of whether that rollback exists. If it cannot name the rollback, the fix is not `[REVERSIBLE]`.
 - **Default to NO.** "Almost ready" is NO-GO.

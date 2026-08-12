@@ -57,7 +57,9 @@ End by rendering the Decision Ledger in chat, in terse spec style (pipeline arro
 
 ## Ending & handoff
 
-Do not stop until every branch on the map is resolved (or logged UNGRILLED in quick mode), both named rounds have run, and the ledger is rendered. Then **recommend one exit rather than listing three** — you just spent the whole session learning which one fits:
+Run until every branch on the map is resolved (or logged UNGRILLED in quick mode), both named rounds have run, and the ledger is rendered — **or until the walk hits its budget, whichever comes first** (Decision Contract D3). The budget: **every one-way door must be resolved, no exceptions** — that is the irreducible core of the grill. Two-way doors get the batched slate; any still open when the slate closes are logged to the ledger as **admitted assumptions with a named risk**, not walked individually. An unresolved two-way door is a cheap mistake you can fix later; an unfinished grill is a plan that never got stress-tested at all.
+
+Then **recommend one exit rather than listing three** — you just spent the whole session learning which one fits:
 
 > **RECOMMENDED — <exit>.** <One sentence on why this one.>
 > Or: render the ledger as a BUILD-SPEC · ExitPlanMode with the resolved plan · `/gauntlet` if the question is now ship-readiness rather than plan-soundness.

@@ -51,6 +51,8 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 
 The through-line: *the skill has already done the thinking — it must ship the conclusion, pre-classified by what's safe to accept, and make agreement cost one word.*
 
+All 11 skills are held to it mechanically — `python3 scripts/check_decision_contract.py` fails the build on a regression, and `scripts/selftest_decision_contract.py` proves the checker itself still bites. Both run in CI. Same principle the skills run on: coverage is proven, never claimed.
+
 **How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/triptych` front-runs the ladder: when the design direction itself is undecided, it builds real alternatives to pick from, and the winner feeds the ladder. `/elon-audit` is the deep-clean that pairs with any of them. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
 
 ---

@@ -26,6 +26,8 @@ Think in TLA+, write in TypeScript.
 1. **One risky workflow per machine.** Don't model your whole system. Model the billing state machine. Model the subscription lifecycle. One machine per critical flow.
 2. **Keep proof domains tiny.** 2 users, 3 runs finds most bugs. Scale up in nightly tiers.
 3. **Fix the design, not the code.** If `check` fails, the state machine design is wrong. Redesign the transitions and invariants.
+   **A counterexample trace is evidence, not a decision** (Decision Contract D1). TLC hands back the exact event sequence that broke the invariant — so read it and say which of the three things is actually wrong, rather than printing the trace and leaving the diagnosis to the operator:
+   `RECOMMENDED — <the invariant is too strong | a guard is missing on <action> | the spec models a state the system cannot reach>`, naming the specific transition and the one-line reason the trace proves it. Verification output is binary and needs no confidence number; the *diagnosis* is the judgment call, and it is the skill's job, not the reader's.
 4. **Never edit generated artifacts.** Don't touch `.tla` files, certificates, or adapter code. Regenerate with `build`.
 5. **Never write directly to machine-owned tables.** All mutations go through the generated adapter or interpreter.
 6. **Prefer small atomic machines.** Multiple small machines composed at the application layer beat one giant spec.

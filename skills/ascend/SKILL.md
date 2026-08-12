@@ -53,6 +53,13 @@ yields the moment one trips. Not autonomous (it never lands on `main` unreviewed
   BUILD.
 - **Isolation:** passes run on **shared-tree branches** (`ascend/pass-N-*` off `ascend/integration`), not isolated
   git worktrees — simpler revert/merge; this is why `init.sh` stashes a dirty tree before starting.
+- **Reversibility classes** (Decision Contract D2) — what the batched gate is allowed to carry:
+  **`[REVERSIBLE]`** = a pass whose whole diff lives on its own `ascend/pass-N-*` branch and is undone by dropping
+  that branch. This is the only class the gate auto-advances through.
+  **`[ONE-WAY]`** = anything a branch drop does not undo — a `[REQUIRES DEP]` install, a schema or data migration, a
+  merge to `main`, anything published. Each trips the gate on its own and takes an explicit yes; **`main` is never
+  touched until SYNTH by explicit request.** A pass that cannot be expressed as a droppable branch is not
+  `[REVERSIBLE]`, whatever its verify tier says.
 - The reference files below are **read in full before any BUILD/GAP step** (by the inline agent and any review agent) —
   they are the doctrine, not optional context.
 
@@ -106,6 +113,8 @@ Each pass inherits the previous pass's accepted output as its new baseline. Pass
 5 CHECK       an independent agent (doctrine pasted) adversarially judges the 3 axes + citations — maker never grades itself
 6 GATE        check the declared tripwires → all clear? CARRY + next pass in the SAME turn
               tripped? yield the diff so far + verify TIER + the reason it stopped (approve / revert / adjust) — STOP
+              either way state ONE call (D4): RECOMMENDED keep|revert · confidence N% · reverses if <evidence>
+              — the diff is evidence, not a verdict; never hand it over undiagnosed
 7 CARRY       state.py add-pass (validates + renders) · merge accepted branch into integration · next pass starts here
 ```
 

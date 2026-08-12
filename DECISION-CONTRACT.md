@@ -145,12 +145,59 @@ finding out late.
 
 | Rule | Kills | Applied in |
 |---|---|---|
-| D1 Default | Menu paralysis | `/polish` `/feel` `/triptych` `/gauntlet` `/ascend` |
-| D2 Reversibility | Fear of accepting a default | `/polish` `/feel` `/ascend` `/gauntlet` |
-| D3 Bounded intake | Unbounded interviews | `/gauntlet` `/grill-me` |
-| D4 One verdict | Hedged conclusions | `/council` `/gauntlet` `/triptych` |
-| D5 Batched gates | Round-trip tax on loops | `/ascend` `/grill-me` |
+| D1 Default | Menu paralysis | `/polish` `/feel` `/triptych` `/gauntlet` `/ascend` `/elon-audit` `/ship` `/loom` `/grill-me` `/tla-precheck` |
+| D2 Reversibility | Fear of accepting a default | `/polish` `/feel` `/ascend` `/gauntlet` `/elon-audit` `/ship` `/loom` `/triptych` |
+| D3 Bounded intake | Unbounded interviews | `/gauntlet` `/grill-me` `/loom` `/ship` `/triptych` |
+| D4 One verdict | Hedged conclusions | `/council` `/gauntlet` `/triptych` `/ascend` `/ship` |
+| D5 Batched gates | Round-trip tax on loops | `/ascend` `/grill-me` `/loom` |
 
 **The one-line version:** the skill has already done the thinking — it must ship
 the conclusion, pre-classified by what's safe to accept, and make agreement cost
 one word.
+
+---
+
+## Enforcement
+
+A contract nobody checks is a wish. This one is machine-enforced, on the same
+principle the skills themselves run on — *coverage is proven, never claimed*.
+
+```bash
+python3 scripts/check_decision_contract.py            # all skills, fails on violation
+python3 scripts/check_decision_contract.py polish -v  # one skill, show every check
+python3 scripts/selftest_decision_contract.py         # prove the checker can still fail
+```
+
+`check_decision_contract.py` reads every markdown file in every skill — not just
+`SKILL.md`, because intake templates, output templates and scoring rubrics carry
+decision points too — and runs one check per rule:
+
+| Check | Fails when |
+|---|---|
+| **D1** | a menu (`… · … · none`) appears with no `RECOMMENDED` in the surrounding block |
+| **D2** | a skill that mutates the tree never declares `[REVERSIBLE]` / `[ONE-WAY]` in its `SKILL.md` |
+| **D3** | unbounded-intake phrasing survives, or a skill questions the operator with no budget declared |
+| **D4** | a hedge word appears in a verdict line **or the block beneath it** |
+| **D5** | a multi-pass skill declares no batched gate policy |
+
+It runs in CI on every push and PR (`.github/workflows/decision-contract.yml`).
+
+**Exemptions are declared, never silent.** A rule that genuinely doesn't apply is
+opted out inline, with a reason, and the checker *reports* it rather than hiding it:
+
+```html
+<!-- contract: D2 n/a - read-only skill, applies no changes -->
+```
+
+**The checker is itself tested.** `selftest_decision_contract.py` injects a known
+regression per rule into a throwaway copy of the tree and asserts the matching
+check goes red. A linter that has quietly stopped biting is worse than none —
+this fails the build the moment a rule stops catching its own regression. Both
+scripts run in CI; the self-test is the reason a green run means anything.
+
+*Honest limits:* these are textual checks over prose, so they catch **structural**
+regressions — a menu that lost its default, an uncapped interview, a hedged
+verdict, an unclassed mutation. They cannot judge whether a recommendation is
+*good*, whether a reversibility class is *true*, or whether a default is
+well-calibrated. That is review work, and D1's calibration rule is how it gets
+fed back: if the operator keeps editing the default, the default is wrong.
