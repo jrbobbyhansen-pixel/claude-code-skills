@@ -249,7 +249,9 @@ Members: [name] + [name] + [name]
 [The single most valuable thing this triad contributed]
 
 ### Recommended Action
-[Concrete next step emerging from this triad]
+[ONE concrete next step, imperative mood — an action a reader can take tomorrow.
+ Hedged verbs are banned here (Decision Contract D4); doubt goes in the confidence number below.]
+Confidence: [n]%
 ```
 
 **Rupert Meta-Synthesis:**
@@ -265,8 +267,17 @@ Members: [name] + [name] + [name]
 ### What the council doesn't know
 [Unresolved questions — what you'd need to know to decide more confidently]
 
-### My recommendation
-[Rupert's direct take integrating both triads]
+### THE CALL
+[Exactly one action, imperative mood. This is the line the operator acts on — it must survive being
+ read alone, with no other section. Hedged verbs are banned here (Decision Contract D4).]
+**Confidence:** [n]%
+**Reverses if:** [the specific evidence that would flip this call — this is where genuine doubt goes,
+ and it is worth more to the operator than any hedged verb]
+**Cost if wrong:** [what it takes to walk this back — cheap / sticky / one-way]
+
+*Deadlock is still a call.* When the council genuinely cannot converge, THE CALL reads:
+**"Deadlocked — <the tension in one line>. Go get <the specific tiebreaker>."** That is something the
+operator can act on today; a shrug is not.
 
 ### The question behind your question
 [What this deliberation revealed about the real underlying issue]

@@ -21,7 +21,7 @@ The leverage moved from *typing prompts* to *designing the system that prompts*.
 
 ```
 # build / deploy
-/loom                 interview → find a candidate quality task → run the Gate
+/loom                 interview (≤5 Q, D3) → find a candidate quality task → run the Gate
 /loom "<task>"        Gate → scaffold + backtest if it passes
 /loom --wrap /polish  wrap an existing quality skill as the loop body
 /loom --backtest <l>  replay against history → predicted accept-rate + cost
@@ -102,7 +102,8 @@ This is what separates `/loom` from "just schedule a prompt." Run **all four**; 
 3. **Token budget can absorb waste** — loops re-read, retry, explore. (Mitigate with local-model routing.)
 4. **The agent has senior-engineer tools** — logs, a repro env, the ability to run the code it writes.
 
-Plus the 30-sec checklist: a **hard stop** (iteration/token/time cap) and a **human gate** before anything irreversible (merge/deploy/deps). **Refuse the bad-list:** architecture rewrites, auth/payments code, production deploys, vague product work, anything where "done" is a judgment call. Full lists + good-first-loops in `references/the-gate.md`. **A refusal is a successful run.**
+Plus the 30-sec checklist: a **hard stop** (iteration/token/time cap) and a **human gate** before anything irreversible (merge/deploy/deps).
+**Reversibility classes** (Decision Contract D2) — the trust ladder is built on them, so a loop must state which class its output is: **`[REVERSIBLE]`** = the loop's work lands as a PR or a branch a human can close, or a commit one `git revert` undoes — the only class `auto-trivial` maturity may ever take unattended. **`[ONE-WAY]`** = a merge to the default branch, a deploy, a dependency install, a migration, anything published or sent. **No maturity stage — not even `auto-trivial` — auto-takes a `[ONE-WAY]` action; that is what the human gate in condition 5 is for.** A loop that cannot express its output as `[REVERSIBLE]` belongs on the bad-list, not on the ladder. **Refuse the bad-list:** architecture rewrites, auth/payments code, production deploys, vague product work, anything where "done" is a judgment call. Full lists + good-first-loops in `references/the-gate.md`. **A refusal is a successful run.**
 
 ---
 
@@ -154,6 +155,14 @@ Promotion is always a **human tap**; demotion is **automatic**. Detail + the gat
 - **Per-loop state (in repo)** `.loom/<loop>/state.json` + human log `LOOM-<loop>.md` at repo root (gitignore-friendly sidecar in `.loom/`).
 - **Audit** append-only, hash-chained (`scripts/audit.py`); external watcher (`scripts/watchdog.py`) verifies chain + liveness.
 - **Notify** reuses `ship/scripts/notify.py` → Rupert/Telegram + push, fired only at digest / escalation / abort. The morning digest **always sends, even if empty** (silence = alarm).
+- **Every escalation and every digest ships a recommendation** (Decision Contract D1). This is the highest-frequency human touchpoint in the library — N loops × nightly — so it is where a missing default costs the most. A loop that wakes the operator has already gathered the evidence; it must say what it would do:
+  ```
+  ESCALATION — <loop> · run <id> · stopped at <hard stop>
+    RECOMMENDED: <retire | --renew | demote one stage | take it manual | ignore, transient>
+    Why: <the one line of evidence>
+    Reply `go` to take it · `show` for the trace · `retire <loop>`
+  ```
+  The digest follows the same law: **never a bare list of what happened.** It ends with the one action worth taking today, or `RECOMMENDED: nothing — fleet healthy`. An empty digest is a recommendation too. A digest that makes the operator diff last night's state against their memory is a report, not a decision — and it is exactly the rubber-stamping that concern 5 exists to prevent.
 
 ---
 

@@ -26,12 +26,26 @@ The test for every change: **does it build UP what the app is, or replace what t
 out (logged to `DEFERRED (redesign)` so you see it was weighed). Full law in [`references/doctrine.md`](references/doctrine.md).
 
 ## How it runs — the execution model (read this first)
-`/ascend` is a **multi-turn, human-gated loop** — not an autonomous run.
+`/ascend` is a **human-gated loop with a batched gate** — it runs unattended *while its declared tripwires hold*, and
+yields the moment one trips. Not autonomous (it never lands on `main` unreviewed), and not per-pass chatty either.
 - **BUILD runs inline in the main agent** (it calls the `/run` and `/polish` skills, which subagents can't). MAP and
   the independent review fan out to sub-agents; BUILD does not.
-- **At each pass's review gate the loop YIELDS THE TURN:** it runs CARRY (persists state), presents the diff, and
-  **stops**. It does **not** start the next pass in the same turn — that would defeat the gate. (Slate-mode
-  exception: the slate gate is the idea gate; approved items build in one turn — loop.md § Slate mode.)
+- **The gate is BATCHED, not per-pass** (Decision Contract D5). A ≥3-pass run must not cost ≥3 round trips. **Declare
+  the gate policy once, before pass 1**, and print it — one decision then covers the whole run:
+  ```
+  GATE POLICY  (one decision covers all <N> passes)
+    Auto-advance while:  verify TIER ≥ render-tested · zero new test failures vs baseline · surface reachable
+                         · independent review passes all 3 axes · chosen candidate confidence ≥ 0.8
+    Stop and yield on:   any tripwire above · [REQUIRES DEP] · a TASTE-class call · weight-class overrun
+                         · graveyard kill of a top-3 candidate
+    Otherwise:           run all <N> passes → ONE combined diff at the end
+  ```
+  While every tripwire holds, CARRY persists state and the **next pass begins in the same turn**. The moment one
+  trips, the loop **stops at that pass** and yields with the diff so far plus the reason it stopped — batching never
+  means finding out late. `--gate each` restores the old per-pass yield; `--gate none` is rejected (there is always a
+  final review). This is safe precisely because passes are branch-isolated, independently reviewed, and cleanly
+  revertible — the operator reviews once, at full context, instead of <N> times at partial context.
+  (Slate-mode exception: the slate gate is the idea gate; approved items build in one turn — loop.md § Slate mode.)
 - **Resume:** a bare `/ascend` in a repo that already has `.ascend/state.json` **resumes, not restarts** — run
   `python3 scripts/state.py status` first; if a pass is awaiting a decision, apply the user's approve/revert/adjust to
   it, then begin the next pass. Skip Phase 0/0.5 when already done.
@@ -39,6 +53,13 @@ out (logged to `DEFERRED (redesign)` so you see it was weighed). Full law in [`r
   BUILD.
 - **Isolation:** passes run on **shared-tree branches** (`ascend/pass-N-*` off `ascend/integration`), not isolated
   git worktrees — simpler revert/merge; this is why `init.sh` stashes a dirty tree before starting.
+- **Reversibility classes** (Decision Contract D2) — what the batched gate is allowed to carry:
+  **`[REVERSIBLE]`** = a pass whose whole diff lives on its own `ascend/pass-N-*` branch and is undone by dropping
+  that branch. This is the only class the gate auto-advances through.
+  **`[ONE-WAY]`** = anything a branch drop does not undo — a `[REQUIRES DEP]` install, a schema or data migration, a
+  merge to `main`, anything published. Each trips the gate on its own and takes an explicit yes; **`main` is never
+  touched until SYNTH by explicit request.** A pass that cannot be expressed as a droppable branch is not
+  `[REVERSIBLE]`, whatever its verify tier says.
 - The reference files below are **read in full before any BUILD/GAP step** (by the inline agent and any review agent) —
   they are the doctrine, not optional context.
 
@@ -51,6 +72,7 @@ out (logged to `DEFERRED (redesign)` so you see it was weighed). Full law in [`r
 /ascend --target asana,linear    # pin exemplars (else inferred from the goal-lock)
 /ascend --slate                  # ideas-first: BENCHMARK+GAP every planned pass, gate on the scored
                                  # slate BEFORE building, then build only approved items (loop.md § Slate mode)
+/ascend --gate each              # yield the turn after EVERY pass (pre-D5 behaviour; default is one batched gate)
 /ascend --restart                # ignore existing .ascend/ and start fresh
 ```
 
@@ -89,7 +111,10 @@ Each pass inherits the previous pass's accepted output as its new baseline. Pass
 3 BUILD       scripts/new-pass.sh → implement on the pass branch, in the app's OWN design language
 4 VERIFY      profile's typecheck/lint/build · run tests vs baseline · liveness (render/boot) · reachable in nav · record TIER
 5 CHECK       an independent agent (doctrine pasted) adversarially judges the 3 axes + citations — maker never grades itself
-6 GATE        present diff + verify TIER + flags → YIELD THE TURN (approve / revert / adjust) — STOP
+6 GATE        check the declared tripwires → all clear? CARRY + next pass in the SAME turn
+              tripped? yield the diff so far + verify TIER + the reason it stopped (approve / revert / adjust) — STOP
+              either way state ONE call (D4): RECOMMENDED keep|revert · confidence N% · reverses if <evidence>
+              — the diff is evidence, not a verdict; never hand it over undiagnosed
 7 CARRY       state.py add-pass (validates + renders) · merge accepted branch into integration · next pass starts here
 ```
 

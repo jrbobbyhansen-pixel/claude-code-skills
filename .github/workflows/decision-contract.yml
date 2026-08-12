@@ -1,0 +1,28 @@
+name: Decision Contract
+
+# The contract is only real if a regression fails the build. Prose in a doc rots;
+# a red check does not.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: enforce DECISION-CONTRACT.md
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check every skill against D1-D5
+        run: python3 scripts/check_decision_contract.py --verbose
+
+      - name: Self-test the checker
+        # A checker that cannot fail is decoration. Prove each rule still catches
+        # its regression before trusting a green run above.
+        run: python3 scripts/selftest_decision_contract.py

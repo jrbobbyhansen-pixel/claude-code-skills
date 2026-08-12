@@ -39,6 +39,20 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/tla-precheck`](skills/tla-precheck/SKILL.md) | Formally verify state machines via a TypeScript DSL | 3 files |
 | [`/triptych`](skills/triptych/SKILL.md) | N divergent working design concepts, captured live, owner picks | 6 files |
 
+**How they decide.** Every skill here follows one shared interaction standard — [**the Decision Contract**](DECISION-CONTRACT.md). These skills do a lot of analysis, and the temptation at the end of a run is to hand back a flat menu (`Apply? [ ALL · by desk · pick <ids> · none ]`) after having already computed every fact needed to answer it. The contract bans that. In short:
+
+| | Rule | What it kills |
+|---|---|---|
+| **D1** | Every gate ships a **default** — the recommendation is pre-selected, agreement costs one word (`go`) | Menu paralysis |
+| **D2** | **Reversibility** decides what's in the default — `[REVERSIBLE]` auto-included, `[ONE-WAY]` never | Fear of accepting a default |
+| **D3** | **Bounded intake** — a hard question cap per phase, then unknowns become a written Assumption Ledger, not a blocker | Unbounded interviews |
+| **D4** | **One verdict**, imperative mood — uncertainty goes in a confidence number and a reversal trigger, never in a hedged verb | Hedged conclusions |
+| **D5** | **Batched gates** — declare the tripwires once, run unattended while they hold, stop the instant one trips | The round-trip tax on multi-pass loops |
+
+The through-line: *the skill has already done the thinking — it must ship the conclusion, pre-classified by what's safe to accept, and make agreement cost one word.*
+
+All 11 skills are held to it mechanically — `python3 scripts/check_decision_contract.py` fails the build on a regression, and `scripts/selftest_decision_contract.py` proves the checker itself still bites. Both run in CI. Same principle the skills run on: coverage is proven, never claimed.
+
 **How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/triptych` front-runs the ladder: when the design direction itself is undecided, it builds real alternatives to pick from, and the winner feeds the ladder. `/elon-audit` is the deep-clean that pairs with any of them. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
 
 ---

@@ -85,7 +85,10 @@ Full charters in `references/roles/{desk}.md`. Cast per project + goal (see `ref
 1. **Inventory first.** Run `scripts/split.py . --json` → signals + suggested sections + over-budget flags. Risk-rank sections worst-first (money > data > auth > core > infra > UI). Sub-split any over-budget section. **The signals drive the questions** — this is what makes the grill project-specific instead of boilerplate.
 2. **Load any saved bar.** If `.gauntlet/bar.json` exists, load it and **confirm deltas** ("goal still X? deadline still Y? new signals since last run?") instead of re-interrogating from scratch.
 3. **Grill from `references/intake-templates.md`.** Ask the **Core Bar** (GOAL · DEADLINE · DEMO that must pass · who operates it UNAIDED · NON-GOALS · CRITICAL PATHS), then **only the signal blocks that fired** (billing → real-money-by-date; mobile → App Store review window; embedded → OTA/rollback; llm_app → eval/cost/latency; db → migration/backup; …). Use the **AskUserQuestion** tool for the structured bar; drop to freeform follow-ups to resolve ambiguity. Discipline: **recommend an answer first, never accept vague, read the code before asking** if the code can answer it.
-4. **Stop condition = zero guessing.** Keep a running ledger of open unknowns. Do **not** advance to STEP 2 until GOAL, DEADLINE, DEMO, each owner's unaided task, NON-GOALS, and **every fired-signal blocker** are facts you did not guess. *If you'd have to assume it to run the audit, you must ask it.* Not capped at a question count.
+4. **Stop condition = the budget, not the unknowns** (Decision Contract D3). Intake is **capped at 2 rounds**: one batched `AskUserQuestion` for the Core Bar, then **at most one** follow-up round for fired-signal blockers and genuine ambiguity. Never a third. Within the budget the old discipline holds in full — read the code before asking, recommend an answer first, never accept vague.
+   **At the cap, assume out loud.** Every still-open unknown becomes an entry in the **Assumption Ledger** — `what was assumed · why that default · what breaks if it's wrong · which findings depend on it` — written to `.gauntlet/bar.json` under `assumptions[]`, echoed at the top of `READINESS.md`, and tagged on every finding that rests on it. Then **advance to STEP 2 anyway.**
+   *The old rule was "if you'd have to assume it, you must ask it." The new rule is **ask once, then assume it in writing.** A visible wrong assumption is corrected in one turn and the audit re-scores; a blocked audit is simply never run.* An assumption-dependent P0 is reported as such, never suppressed — and if a correction lands later, re-score only the findings tagged to it rather than re-running the audit.
+   **Defaults when unanswered:** no deadline → *"ready to demo today"*; no named demo → the critical path with the most inbound routes; no stated non-goals → *"none — everything in the tree is in scope"*. Each of these is an entry in the ledger, not a silent guess.
 5. **Lock + persist.** Write the resolved mandate to `.gauntlet/bar.json` (goal, deadline, demo, owners, non-goals, signals, critical paths). It seeds every desk prompt's `Goal under audit / Critical paths here` line.
 6. **Threat-model the mapped surface** (read `references/threat-model.md`). Using the split map + manifests + docs + the locked bar, produce `.gauntlet/threats.json`: assets, trust boundaries, and STRIDE-walked threats `T1…Tn` scored by (impact, likelihood), each tagged with the sections it touches. **Hard gate — coverage rule:** every trust boundary must be the surface of ≥1 threat; an unthreatened boundary means you stopped thinking, not that it is safe. *Signals tell you what technology is present; the threat model tells you what an attacker wants and where they get in. Casting on signals alone points opus desks at whatever has the most files.*
 7. **Cast.** Run `scripts/cast.py --goal "<goal>" --mode deep` (piped from split) → deployed desks, scope, model, sections. Assign depth D1/D2/D3 by section risk, then **re-rank by threat**: a section carrying a `critical`/`existential` threat with a `remote_unauth` actor takes D3 + an opus desk whatever its extensions suggested; a section on no threat path drops a tier.
@@ -206,7 +209,16 @@ Rounds:     R1-R7   est. input ≈ N tokens (slice LOC × desks-per-section × 1
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-`--estimate` prints this and **exits** — no agents, no spend. In a normal deep run it is the last thing before R1; if the spawn count exceeds ~40, say so plainly and offer to narrow (`--desk`, fewer sections, fast mode) before proceeding. Silent cost is a defect: a run that quietly burns an afternoon of budget is worse than one that asks.
+`--estimate` prints this and **exits** — no agents, no spend. In a normal deep run it is the last thing before R1. If the spawn count exceeds ~40, don't just offer to narrow — **name the narrowing you'd pick** (D1): the specific sections to drop, or the specific `--desk` set, chosen from the threat table you just built, with the coverage you'd be giving up stated plainly.
+
+```
+RECOMMENDED — narrow to <n> desks × <n> sections (<n> spawns, ≈<n>% of est. spend)
+  Dropping: <sections> — carry no critical/existential threat
+  Giving up: <what this narrowing will not catch>
+`go` · `go full` (<n> spawns) · `--fast` · `pick <sections>`
+```
+
+Silent cost is a defect: a run that quietly burns an afternoon of budget is worse than one that asks. An unnarrowed *choice* is not the same as an unasked question — ask once, with a recommendation, then run.
 
 ## Resume (`--resume`)
 
@@ -303,4 +315,11 @@ Execute top→bottom, tier by tier; build/test gate + commit after each tier; st
 - **Don't fake-run real money or destructive prod actions** — `[USER MUST RUN]` with a predicted result, always.
 - **Never apply two conflicting patches blind.** If `plan.py` flagged a file cluster, the Remediation desk merges them into one coordinated edit.
 - **Execution is opt-in and gated.** Per-tier build/test gate + commit, stop on the first failure, explicit approval required. Never auto-run a `[USER MUST RUN]` step.
+- **Reversibility classes** (Decision Contract D2). Every fix in the plan carries one, and `plan.json` records it:
+  **`[REVERSIBLE]`** = the fix lands inside a per-tier commit and is undone by one `git revert` — the only class that
+  rides inside a tier-level yes. **`[STICKY]`** = undoable by hand only (a config edit outside the repo, a
+  regenerated lockfile) — named individually before it runs. **`[ONE-WAY]`** = a migration, a data drop, a
+  dependency install, a publish, anything `[USER MUST RUN]` — **never** inside a bulk approval, always its own
+  sentence and its own yes. The Remediation desk already writes a rollback per step; the class is simply the honest
+  summary of whether that rollback exists. If it cannot name the rollback, the fix is not `[REVERSIBLE]`.
 - **Default to NO.** "Almost ready" is NO-GO.

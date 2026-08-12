@@ -144,9 +144,10 @@ For each challenger (in thesis order):
   Axes: layout / hierarchy / density / motion / temperature / nav
 Fit-to-brief: score every panel INCLUDING the incumbent against the Phase-0 adjectives + the ONE job
 (be honest, not diplomatic — if no challenger beats the control, say so plainly).
-Recommendation: at most one sentence, clearly labeled as yours.
-Ask: "Pick one, keep the incumbent, name a hybrid (e.g. B's layout + C's motion), or say 'push further
-on <X>' for another round."
+RECOMMENDED: <Panel> — one sentence, imperative, clearly labeled as yours. Confidence: <n>%.
+  Reverses if: <the one piece of evidence that would flip this pick>
+Ask: "`go` takes <Panel>. Or: keep the incumbent · name a hybrid (e.g. B's layout + C's motion) ·
+'push further on <X>' for another round."
 ```
 
 If ImageMagick is installed, also run `scripts/montage.sh <capture-dir>` — it composes the money shots into
@@ -154,6 +155,12 @@ a single side-by-side `pick-sheet.png` for one-glance comparison (it no-ops grac
 
 Write the same content to `PICK-SHEET.md` in the capture folder — it doubles as the decision ledger. Then
 **stop**. Do not implement, do not merge, do not tidy. The turn ends with the question.
+
+**Reversibility classes** (Decision Contract D2). Every concept panel is built on its own throwaway branch, so a
+whole exploration is **`[REVERSIBLE]`** — losing it costs one `git branch -D` and nothing else, which is exactly why
+divergence is cheap here and worth pushing further than feels comfortable. What is **`[ONE-WAY]`** is Phase 5:
+merging the winner, deleting the losing branches, and any data/service change a thesis needed (flagged as a Contract
+flag above). Those never ride on the pick alone — the pick chooses a direction; the merge is its own yes.
 
 ## Phase 5 — Converge (after the pick)
 

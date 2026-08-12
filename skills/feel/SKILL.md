@@ -130,10 +130,27 @@ the gap), then the finding list split into **Mechanical (apply on `--apply`)** a
 then **Dependencies to add** (if any) and **Reduced-motion work** as their own callouts. Print a tight inline summary.
 On a plain `/feel` (no `--apply`), **stop here** — the scorecard is the product.
 
-### Phase 3 — Apply (only on `--apply`; safe, surgical, idempotent)
-Ask: **Apply? [ all mechanical · by principle · pick <ids> · none ]**. Structural items appear only with `--structural`
-and are **pick-only** (never in "all"). Apply order: **primitives/tokens first** (so call-site migrations have
-something to point at), then per-site migrations, then loose fixes.
+### Phase 3 — Apply (only on `--apply`; defaulted, safe, surgical, idempotent)
+**Ship a recommendation, never a bare menu** (Decision Contract D1) — the scorecard already resolved every
+principle, so state the call:
+
+```
+RECOMMENDED — apply <n> of <N> mechanical   (every one [REVERSIBLE] · principles moved: <list>)
+  Feel score: <x>/7 → <y>/7 if taken
+  Holding back: <n> structural · <n> needs-dep   → name them to include
+
+`go` · `go except <ids>` · `pick <ids>` · `none`
+```
+
+**The default set** = every mechanical finding. Structural items appear only with `--structural` and are
+**pick-only** (never in `go`). Reversibility is **computed, never asserted** (D2): a finding is `[REVERSIBLE]` only
+when its fix is a pure edit to existing tracked files — i.e. every target is snapshottable to
+`.feel/backup/<id>/<relative-path>` before the edit, so restoring that snapshot fully undoes it. Anything needing a
+missing dep is `[ONE-WAY]` (an install survives a file restore) — it stays out of the default and takes its own yes
+at the Dep gate below.
+
+Apply order: **primitives/tokens first** (so call-site migrations have something to point at), then per-site
+migrations, then loose fixes.
 - **Idempotency** — before each edit, check the target isn't already conformant. Detect by searching the file for the
   finding's `anchor` **and** the fix markers (spring already in the style, haptic already called, token already used);
   if present, skip and log `[~] already applied`. Never double-wrap a handler or stack a second entrance animation.
