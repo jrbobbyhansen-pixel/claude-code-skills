@@ -108,9 +108,30 @@ silently skipped), **buries the graveyard** (previously-declined IDs render coll
 **inline summary** (pipeline-arrow counts with the class split + ★ signature wins + pick-only counts), per
 `output-template.md`.
 
-### Phase 3 — Apply menu  (safe, surgical, VCS-agnostic)
-Ask: **Apply? [ ALL · by desk · pick &lt;ids&gt; · none ]**. `[NEW CODE]`, `[REQUIRES DEP]`, **TASTE**, and **CONFLICT**
-items are **pick-only** — excluded from ALL / by-desk bulk; they apply only when named explicitly by ID.
+### Phase 3 — Apply gate  (defaulted, safe, surgical, VCS-agnostic)
+**Ship a recommendation, never a bare menu** (Decision Contract D1). You have just computed every fact needed to
+decide — class, tier, conflict state, backup status. Present the call, not the raw list:
+
+```
+RECOMMENDED — apply <n> of <N>   (all OBJECTIVE + CONVENTION · every one [REVERSIBLE])
+  Holding back: <n> TASTE · <n> [REQUIRES DEP] · <n> CONFLICT · <n> [NEW CODE]   → name them to include
+  ★ signature wins in the default: <ids>
+
+`go` · `go except <ids>` · `pick <ids>` · `none`
+```
+
+**The default set** = every OBJECTIVE and CONVENTION finding whose target was backed up this run. `[NEW CODE]`,
+`[REQUIRES DEP]`, **TASTE**, and **CONFLICT** items are **pick-only** — excluded from `go`/by-desk bulk; they apply
+only when named explicitly by ID. Reversibility is **computed, never asserted** (D2): a finding is `[REVERSIBLE]`
+only when its fix is a pure edit to existing tracked files — i.e. every target is snapshottable to
+`.polish/backup/<id>/` by step 1 below, so restoring that snapshot fully undoes it. Anything a file restore cannot
+walk back is `[ONE-WAY]` and never rides inside `go`: `[REQUIRES DEP]` above all (an install is not undone by
+restoring a file), plus any fix touching generated lockfiles or files outside the scanned tree. If you cannot name
+the snapshot that would undo a finding, it does not belong in the default.
+
+*Calibration:* if the operator routinely answers `go except …` with the same class each run, that class belongs
+outside the default — move it to pick-only rather than making them repeat the exception.
+
 Read `findings.index.json` for the per-id fix + `apply_order` (NEW CODE primitives first). For each finding, in order:
 1. **Back up** the target file(s) to `.polish/backup/<id>/` before editing (this snapshot includes all prior
    successful edits to that file — so restoring it undoes only this finding, preserving siblings).

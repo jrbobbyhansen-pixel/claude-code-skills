@@ -21,7 +21,11 @@ If invoked as `grill-me quick`, mark the top-3 highest-stakes branches, grill on
 
 ## The walk — rules
 
-- Ask questions one at a time — never batch them.
+- **Spend the one-at-a-time budget where it pays.** One-way doors are walked **one question at a time, never
+  batched** — that depth is the whole point. Two-way doors are **resolved as a single batched slate**: present them
+  together, each with your recommended answer already filled in, and ask only for the exceptions ("`go` takes all
+  eight — or name the ones you'd change"). A cheap-to-reverse decision does not deserve its own round trip, and
+  spending one there is depth stolen from a branch that actually matters.
 - For each question, give your own recommended answer first, then ask if I agree or want to push back.
 - **The Exemplar Move.** Before resolving a branch, name how 2–3 billion-dollar products handle this exact problem — the feature, the workflow, the UI/UX pattern, company named — and ask which of these I considered. Match exemplars to the surface type: onboarding branches get the products famous for onboarding, dashboard branches the great dashboards — never generic references. This is the core of job 2; run it on every branch where a real product has solved the problem. If no real product has, say so and skip the move — never stretch a weak analogy.
 - **Citation honesty.** Mark each exemplar claim as recalled or verified. Never invent a competitor feature. If a claim is load-bearing for a decision, offer to verify it (WebSearch) before the decision locks.
@@ -30,8 +34,8 @@ If invoked as `grill-me quick`, mark the top-3 highest-stakes branches, grill on
 - **Force numbers.** No load-bearing adjective survives: "fast", "simple", "soon", "big" must become a number, a range, or an admitted unknown.
 - If a question can be answered by exploring the codebase, explore it first instead of asking. Hold me to the same standard: when I claim a fact you can check, verify it before accepting it.
 - Push the boundaries of what I think is technically possible — challenge conservative assumptions and surface options I may not have considered.
-- **Reversibility triage.** Classify each branch as a one-way door (irreversible: schema, pricing, public API, brand) or a two-way door (cheap to change later). Depth scales with irreversibility: resolve two-way doors fast; drill one-way doors hard, and demand kill criteria for each — "what evidence would make you abandon this?"
-- **Anchoring guard.** If I accept your recommendation three times in a row without pushback, stop and steelman the opposite of your next recommendation before asking.
+- **Reversibility triage — done at map time, not mid-walk.** Tag every branch on the map as a **one-way door** (irreversible: schema, pricing, public API, brand) or a **two-way door** (cheap to change later), and show the tags when you present the map. This tag is what routes the branch: two-way doors go to the batched slate, one-way doors get the full one-at-a-time walk plus kill criteria — "what evidence would make you abandon this?" Depth scales with irreversibility, and the map makes that allocation visible before a single question is asked.
+- **Anchoring guard.** If I accept your recommendation on three *one-way doors* in a row without pushback, stop and steelman the opposite of your next recommendation before asking. Count one-way doors only — a batch-accepted two-way slate is the system working as designed, not evidence of anchoring, and re-litigating it would spend the round trips the batch just saved.
 - When I win a pushback, concede explicitly and record my answer in the ledger — blunt is not stubborn.
 - When a decision is resolved, state it clearly, then move to the next open branch.
 - Keep the ledger current as you go — do not let anything slip through.
@@ -53,6 +57,11 @@ End by rendering the Decision Ledger in chat, in terse spec style (pipeline arro
 
 ## Ending & handoff
 
-Do not stop until every branch on the map is resolved (or logged UNGRILLED in quick mode), both named rounds have run, and the ledger is rendered. Then offer exactly three exits: render the ledger as a BUILD-SPEC · call ExitPlanMode with the resolved plan · run /gauntlet if the question is now ship-readiness rather than plan-soundness.
+Do not stop until every branch on the map is resolved (or logged UNGRILLED in quick mode), both named rounds have run, and the ledger is rendered. Then **recommend one exit rather than listing three** — you just spent the whole session learning which one fits:
+
+> **RECOMMENDED — <exit>.** <One sentence on why this one.>
+> Or: render the ledger as a BUILD-SPEC · ExitPlanMode with the resolved plan · `/gauntlet` if the question is now ship-readiness rather than plan-soundness.
+
+Pick BUILD-SPEC when the plan is sound but unwritten, ExitPlanMode when it's ready to execute now, `/gauntlet` when the open risk is shipping rather than thinking.
 
 If a grill is interrupted and re-invoked in the same conversation, re-present the ledger's open branches and resume — never restart from scratch.

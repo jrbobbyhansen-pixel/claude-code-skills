@@ -44,7 +44,7 @@ Est. input: ≈ N tokens  (in-scope LOC × ~1.3, read once per sweep + once per 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-`/elon-audit --estimate` prints this and **exits**. Otherwise: if the run implies more than ~40 agents, say so and offer to narrow (a subdirectory, `--since <ref>` for changed files only) before continuing. Never start a large run without the user seeing the number.
+`/elon-audit --estimate` prints this and **exits**. Otherwise: if the run implies more than ~40 agents, say so and **name the narrowing you'd pick** rather than listing the ways to narrow (Decision Contract D1) — e.g. *"RECOMMENDED — `--since main` (47 changed files, 6 agents, ~12% of est. spend); the untouched tree was audited on <date> and carries no open P0. `go` · `go full` · `pick <subdir>`."* Never start a large run without the user seeing the number, and never make them design the smaller run themselves.
 
 ---
 
@@ -271,13 +271,31 @@ widen the sample before presenting the plan.
 
 ## Execution Flow
 
-After the audit report is presented inline, enter plan mode with the full fix list.
+After the audit report is presented inline, enter plan mode with the full fix list — and **ship a recommendation, not
+a bare fix list** (Decision Contract D1). The audit already knows which findings are `[PROVEN]`, which survived
+cross-examination, and which touch something that can't be walked back. Say what to run:
+
+```
+RECOMMENDED — execute P0 + P1   (<n> fixes · all [REVERSIBLE]: per-tier build gate + isolated commit)
+  Holding back: <n> P2 supercharge (discretionary) · <n> [NEEDS MANUAL CONFIRM] · <n> [ONE-WAY]
+  [ONE-WAY] in this run: <schema/data/dependency/publish ops, listed individually>
+
+`go` · `go p0 only` · `go including p2` · `pick <ids>` · `none`
+```
+
+**The default set** = every **confirmed** P0 and P1 fix (proven **and** cross-examined). Excluded from `go` in every
+case: `[NEEDS MANUAL CONFIRM]`, P2 supercharge, and anything `[ONE-WAY]` — a migration, a data drop, a dependency
+install, or a publish is never inside a bulk yes and takes its own explicit sentence (D2). Reversibility here is
+earned by the per-tier build gate + commit, so `go` is recoverable with one `git revert`; a fix that cannot be
+committed in isolation is not `[REVERSIBLE]`.
 
 On approval:
 1. Execute all **confirmed** P0 fixes (proven + cross-examined; anything else is `[NEEDS MANUAL CONFIRM]`) → run
    build → confirm passes → `git commit -m "[elon-audit] P0: kill shots — N fixes"`
 2. Execute all P1 fixes → run build → confirm passes → `git commit -m "[elon-audit] P1: performance & waste — N fixes"`
-3. Execute all P2 fixes → run build → confirm passes → `git commit -m "[elon-audit] P2: supercharge — N fixes"`
+3. Execute all P2 fixes **only if the operator opted in** (`go including p2` or an explicit pick) — P2 is outside the
+   default set → run build → confirm passes → `git commit -m "[elon-audit] P2: supercharge — N fixes"`.
+   On a plain `go`, stop after P1 and report the P2 count left on the table.
 4. Run Phase 5 Handoff
 
 If build fails after any tier: stop, surface the regression, fix before moving to next tier.

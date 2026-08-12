@@ -144,9 +144,10 @@ For each challenger (in thesis order):
   Axes: layout / hierarchy / density / motion / temperature / nav
 Fit-to-brief: score every panel INCLUDING the incumbent against the Phase-0 adjectives + the ONE job
 (be honest, not diplomatic — if no challenger beats the control, say so plainly).
-Recommendation: at most one sentence, clearly labeled as yours.
-Ask: "Pick one, keep the incumbent, name a hybrid (e.g. B's layout + C's motion), or say 'push further
-on <X>' for another round."
+RECOMMENDED: <Panel> — one sentence, imperative, clearly labeled as yours. Confidence: <n>%.
+  Reverses if: <the one piece of evidence that would flip this pick>
+Ask: "`go` takes <Panel>. Or: keep the incumbent · name a hybrid (e.g. B's layout + C's motion) ·
+'push further on <X>' for another round."
 ```
 
 If ImageMagick is installed, also run `scripts/montage.sh <capture-dir>` — it composes the money shots into
