@@ -38,6 +38,7 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/ship`](skills/ship/SKILL.md) | Autonomous idea-to-launch build pipeline | 9 files |
 | [`/tla-precheck`](skills/tla-precheck/SKILL.md) | Formally verify state machines via a TypeScript DSL | 3 files |
 | [`/triptych`](skills/triptych/SKILL.md) | N divergent working design concepts, captured live, owner picks | 6 files |
+| [`/videocut`](skills/videocut/BUILD-SPEC.md) | Raw footage folder in, beat-synced vertical reel out (spec stage, build pending) | spec only |
 
 **How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/triptych` front-runs the ladder: when the design direction itself is undecided, it builds real alternatives to pick from, and the winner feeds the ladder. `/elon-audit` is the deep-clean that pairs with any of them. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
 
@@ -255,6 +256,18 @@ v1.1 makes already-built screens the first-class case: the **incumbent competes*
 **Use it when:** "mock up 3 versions so I can pick", "show me some directions for this screen", "explore a redesign before we commit."
 
 **Inside:** `SKILL.md` + 3 references (divergence axes/thesis doctrine + taste ledger, per-platform capture recipes, built-screen contract/recipes) + a montage script + starter eval prompts.
+
+---
+
+## `/videocut` — Reel Cutter (spec stage)
+
+**A folder of raw iPhone footage in, a 20-30s beat-synced 9:16 hero reel out. Not built yet, the locked design doc ships first.**
+
+Planned pipeline: probe every clip (fps, rotation, HDR flag) → auto-detect candidate moments from audio spikes, scene changes, and motion density → present a human-gated HTML pick sheet with thumbnails and animated previews → map approved shots onto the music track's beat grid → render via ffmpeg (Dolby Vision tonemapped to SDR, loudness-normalized, hard cuts on beat with speed ramps only on 60fps+ sources) → deliver a music-burned version plus a clean version for adding platform-native audio. Fully local, fully free (ffmpeg + librosa + Pillow, zero paid APIs).
+
+**Use it when:** (soon) you have a pile of raw phone footage and want a social-ready vertical reel without opening an editor.
+
+**Inside:** currently just [`BUILD-SPEC.md`](skills/videocut/BUILD-SPEC.md), the complete locked design. Build session pending.
 
 ---
 
