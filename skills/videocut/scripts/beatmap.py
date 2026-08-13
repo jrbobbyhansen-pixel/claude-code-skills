@@ -58,7 +58,7 @@ def main():
     start = float(min(beats, key=lambda b: abs(b - strong[0]))) if strong.size else beats[0]
 
     save_json(sys.argv[2], {
-        "track": str(track),
+        "track": str(track.resolve()),
         "duration": round(duration, 2),
         "bpm": round(tempo, 2),
         "beat_interval": round(60.0 / tempo, 4),

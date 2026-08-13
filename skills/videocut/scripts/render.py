@@ -15,9 +15,26 @@ sys.path.insert(0, str(Path(__file__).parent))
 from common import (DUCK_DB, FFMPEG, OUT_FPS, OUT_H, OUT_W, PROXY_H, PROXY_W,
                     TARGET_LUFS, die, load_json, run)
 
-TONEMAP = ("zscale=transfer=linear:npl=100,format=gbrpf32le,"
-           "zscale=primaries=bt709,tonemap=hable:desat=0,"
-           "zscale=transfer=bt709:matrix=bt709:range=tv")
+TONEMAP_ZSCALE = ("zscale=transfer=linear:npl=100,format=gbrpf32le,"
+                  "zscale=primaries=bt709,tonemap=hable:desat=0,"
+                  "zscale=transfer=bt709:matrix=bt709:range=tv")
+# Fallback for ffmpeg builds without libzimg: colorspace converts the
+# BT.2020 primaries/matrix (the main cause of washed color); HLG transfer
+# is overridden as bt2020-10 (close in the SDR-compatible range) with a
+# mild eq lift to compensate highlights.
+TONEMAP_FALLBACK = ("colorspace=all=bt709:iall=bt2020:itrc=bt2020-10,"
+                    "eq=gamma=1.05:saturation=1.10")
+_tonemap = None
+
+
+def tonemap_chain():
+    global _tonemap
+    if _tonemap is None:
+        p = run([FFMPEG, "-hide_banner", "-filters"], check=False, capture=True)
+        _tonemap = TONEMAP_ZSCALE if "zscale" in (p.stdout or "") else TONEMAP_FALLBACK
+        if _tonemap is TONEMAP_FALLBACK:
+            print("  (no zscale in this ffmpeg build: using colorspace fallback tonemap)")
+    return _tonemap
 
 
 def scale_crop(w, h, crop):
@@ -43,7 +60,7 @@ def shot_mezz(shot, i, mezz_dir, proxy, has_audio):
     dur = shot["dur"]
     vf = []
     if shot["hdr"]:
-        vf.append(TONEMAP)
+        vf.append(tonemap_chain())
     vf.append(scale_crop(w, h, shot["crop"]))
     if shot["speed"] != 1.0:
         vf.append(f"setpts=(PTS-STARTPTS)/{shot['speed']}")
