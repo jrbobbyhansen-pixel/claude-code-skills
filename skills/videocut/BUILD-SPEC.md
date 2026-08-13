@@ -1,6 +1,11 @@
 # /videocut BUILD-SPEC (locked 2026-08-12, deepened same session)
 
-Status: SPEC ONLY. No code exists yet. Build is one dedicated session.
+Status: BUILT 2026-08-12. Selftest ALL PASS (22 assertions, synthetic footage,
+probe->scan->picksheet->beatmap->cut->proxy->final). Implementation notes vs
+this spec: all scripts are Python (probe.py/render.py, not .sh); previews are
+mp4 loops not webp (homebrew ffmpeg lacks the webp encoder); venv at
+~/.claude/venvs/videocut (python3.12: librosa needs numba, which doesn't
+support the system 3.14 yet). NOT yet run on real iPhone footage.
 
 ## Purpose
 

@@ -1,6 +1,6 @@
 # Claude Code Skills Library
 
-A collection of 11 battle-tested custom skills for [Claude Code](https://claude.com/claude-code) by [Bobby Hansen Jr.](https://github.com/jrbobbyhansen-pixel) — audit engines, build pipelines, deliberation systems, and quality loops. Every skill here is the exact version I run daily, shared verbatim.
+A collection of 12 battle-tested custom skills for [Claude Code](https://claude.com/claude-code) by [Bobby Hansen Jr.](https://github.com/jrbobbyhansen-pixel) — audit engines, build pipelines, deliberation systems, and quality loops. Every skill here is the exact version I run daily, shared verbatim.
 
 Skills are markdown-defined capabilities Claude Code loads on demand. Each one lives in its own folder with a `SKILL.md` entry point, plus optional `references/` (doctrine, rubrics, templates the skill reads mid-run) and `scripts/` (deterministic Python/shell helpers).
 
@@ -38,7 +38,7 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/ship`](skills/ship/SKILL.md) | Autonomous idea-to-launch build pipeline | 9 files |
 | [`/tla-precheck`](skills/tla-precheck/SKILL.md) | Formally verify state machines via a TypeScript DSL | 3 files |
 | [`/triptych`](skills/triptych/SKILL.md) | N divergent working design concepts, captured live, owner picks | 6 files |
-| [`/videocut`](skills/videocut/BUILD-SPEC.md) | Raw footage folder in, beat-synced vertical reel out (spec stage, build pending) | spec only |
+| [`/videocut`](skills/videocut/SKILL.md) | Raw footage folder in, beat-synced 9:16 reel out, human-gated pick sheet | 10 files |
 
 **How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/triptych` front-runs the ladder: when the design direction itself is undecided, it builds real alternatives to pick from, and the winner feeds the ladder. `/elon-audit` is the deep-clean that pairs with any of them. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
 
@@ -259,15 +259,17 @@ v1.1 makes already-built screens the first-class case: the **incumbent competes*
 
 ---
 
-## `/videocut` — Reel Cutter (spec stage)
+## `/videocut` — Reel Cutter
 
-**A folder of raw iPhone footage in, a 20-30s beat-synced 9:16 hero reel out. Not built yet, the locked design doc ships first.**
+**A folder of raw phone footage in, a 20-30s beat-synced 9:16 hero reel out — through a mandatory human pick gate.**
 
-Planned pipeline: probe every clip (fps, rotation, HDR flag) → auto-detect candidate moments from audio spikes, scene changes, and motion density → present a human-gated HTML pick sheet with thumbnails and animated previews → map approved shots onto the music track's beat grid → render via ffmpeg (Dolby Vision tonemapped to SDR, loudness-normalized, hard cuts on beat with speed ramps only on 60fps+ sources) → deliver a music-burned version plus a clean version for adding platform-native audio. Fully local, fully free (ffmpeg + librosa + Pillow, zero paid APIs).
+The pipeline: probe every clip (real fps, side-data rotation, HDR flag, creation-time chronology) → auto-detect candidate moments from audio spikes, onset strength, and scene changes (a no-audio fallback covers wind-destroyed clips) → present a human-gated HTML pick sheet with looping video previews, impact/ramp/HDR badges, and a per-genre coverage scorecard → map approved shots onto the music track's beat grid (librosa BPM + drop detection; the drop lands under your designated MONEY shot) → render via ffmpeg mezzanines (hard cuts on 2/4-beat slots, cold-open tease, 0.35x speed ramp on the money moment for 60fps+ sources, HDR tonemapped to BT.709, natural audio ducked under music but kept hot on impact shots, -14 LUFS) → deliver `hero-music.mp4` plus `hero-clean.mp4` (identical cut, no burned music, for adding platform-native trending audio). Fully local, fully free: ffmpeg + librosa + Pillow, zero paid APIs.
 
-**Use it when:** (soon) you have a pile of raw phone footage and want a social-ready vertical reel without opening an editor.
+Two hard gates: no EDL until the user answers the pick sheet, no final render until they approve a proxy draft. Edit iteration is plain language ("first 3 shots drag, end on the retrieve") against a persistent EDL, so re-cuts cost one render. Ships with a capture doctrine (`references/shooting.md` — the shooting contract that makes the machine's job possible) and a full synthetic end-to-end selftest (generates fake footage with known "gunshots" and a known-BPM track, asserts 22 checks through final render).
 
-**Inside:** currently just [`BUILD-SPEC.md`](skills/videocut/BUILD-SPEC.md), the complete locked design. Build session pending.
+**Use it when:** you have a pile of raw phone footage from a hunt, an event, or a work day and want a social-ready vertical reel without opening an editor.
+
+**Inside:** `SKILL.md` + 2 references (shooting doctrine, cut grammar) + 8 scripts (probe, scan, picksheet, beatmap, cut, render, endcard builder, selftest) + `BUILD-SPEC.md`, the full design doc. *Note: the end-card asset and default folders are the author's — point `make_endcard.py` at your own logo.*
 
 ---
 
