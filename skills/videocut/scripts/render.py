@@ -79,7 +79,9 @@ def endcard_mezz(card, seconds, mezz_dir, proxy):
 
 def concat(parts, out, mezz_dir):
     lst = mezz_dir / "concat.txt"
-    lst.write_text("".join(f"file '{p}'\n" for p in parts))
+    # absolute paths: the concat demuxer resolves relative entries against
+    # the list file's own directory, not the cwd
+    lst.write_text("".join(f"file '{Path(p).resolve()}'\n" for p in parts))
     run([FFMPEG, "-y", "-v", "error", "-f", "concat", "-safe", "0",
          "-i", str(lst), "-c", "copy", str(out)])
     return out
@@ -92,6 +94,22 @@ def duck_expr(shots):
         return None
     enable = "+".join(f"between(t,{a:.3f},{b:.3f})" for a, b in ranges)
     return f"volume=volume={DUCK_DB}dB:enable='{enable}'"
+
+
+def music_chain(shots, reel):
+    """Volume envelope composed from the EDL, not a blanket bed:
+    low under the cold-open tease -> full slam on the first build cut,
+    dips wherever natural audio is hot (impacts), fades under the end card."""
+    chain = f"atrim=0:{reel},asetpts=PTS-STARTPTS"
+    if shots and shots[0]["kind"] == "tease":
+        chain += f",volume=0.35:enable='between(t,0,{shots[0]['dur']:.3f})'"
+    hot = [(s["t_timeline"], s["t_timeline"] + s["dur"])
+           for s in shots if s["audio"] == "hot"]
+    if hot:
+        enable = "+".join(f"between(t,{a:.3f},{b:.3f})" for a, b in hot)
+        chain += f",volume=0.5:enable='{enable}'"
+    chain += f",afade=t=out:st={max(0, reel - 1.5)}:d=1.5"
+    return chain
 
 
 def main():
@@ -133,7 +151,7 @@ def main():
              "-ss", str(off), "-i", music,
              "-filter_complex",
              f"[0:a]{nat}[n];"
-             f"[1:a]atrim=0:{reel},afade=t=out:st={max(0, reel - 1.5)}:d=1.5[m];"
+             f"[1:a]{music_chain(edl['shots'], reel)}[m];"
              f"[n][m]amix=inputs=2:duration=first:normalize=0,"
              f"loudnorm=I={TARGET_LUFS}:TP=-1[a]",
              "-map", "0:v:0", "-map", "[a]",
@@ -146,7 +164,7 @@ def main():
          "-ss", str(off), "-i", music,
          "-filter_complex",
          f"[0:a]{nat}[n];"
-         f"[1:a]atrim=0:{reel},afade=t=out:st={max(0, reel - 1.5)}:d=1.5[m];"
+         f"[1:a]{music_chain(edl['shots'], reel)}[m];"
          f"[n][m]amix=inputs=2:duration=first:normalize=0,"
          f"loudnorm=I={TARGET_LUFS}:TP=-1[a]",
          "-map", "0:v:0", "-map", "[a]",

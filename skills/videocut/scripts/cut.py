@@ -83,23 +83,49 @@ def main():
         if slots[i] == 2:
             slots[i] = 4
 
-    # build shots
+    # ---- walk the track's ACTUAL beat times (no averaged grid: tempo drift
+    # would slide cuts off the music) ----
+    bt = beats["beats"]
+    need = sum(slots)
+
+    def nearest_idx(t):
+        return min(range(len(bt)), key=lambda i: abs(bt[i] - t))
+
+    gs_idx = nearest_idx(beats["grid_start"])
+    # beat offset of the money shot inside the reel
+    money_beat_off = None
+    acc = 0
+    for (kind, cid), nb in zip(order, slots):
+        if kind == "shot" and cid == money:
+            money_beat_off = acc
+            break
+        acc += nb
+
+    start_idx, reason = gs_idx, "grid_start"
+    if money_beat_off is not None and beats["drop"] > 0:
+        cand = nearest_idx(beats["drop"]) - money_beat_off
+        if cand >= 0 and cand + need < len(bt):
+            start_idx, reason = cand, "drop-aligned to money shot"
+    if start_idx + need >= len(bt):
+        start_idx, reason = 0, "track short: grid from first beat"
+    if need >= len(bt):
+        die(f"track has {len(bt)} beats, reel needs {need}; pick a longer track")
+
+    # build shots on real beat boundaries
     shots = []
     t = 0.0
-    money_start_in_timeline = None
+    b = start_idx
     for (kind, cid), nb in zip(order, slots):
         c = cands[cid]
         clip = clips.get(c["clip"])
         if clip is None:
             die(f"candidate {cid} references unknown clip {c['clip']}")
-        slot_dur = nb * bi
+        slot_dur = bt[b + nb] - bt[b]
         ramp = kind == "shot" and cid == money and c["ramp_ok"]
         speed = RAMP_SPEED if ramp else 1.0
         span = slot_dur * speed  # source seconds consumed
         mid = (c["t_start"] + c["t_end"]) / 2
         src_in = max(0.0, min(mid - span / 2, clip["duration"] - span))
-        if kind == "shot" and cid == money:
-            money_start_in_timeline = t
         shots.append({
             "id": cid,
             "kind": kind,
@@ -116,20 +142,13 @@ def main():
             "t_timeline": round(t, 3),
         })
         t += slot_dur
+        b += nb
 
     reel_dur = t + ENDCARD_SECONDS
-
-    # music offset: put the drop under the money shot when the track can cover it
-    offset = beats["grid_start"]
-    reason = "grid_start"
-    if money_start_in_timeline is not None and beats["drop"] > 0:
-        cand_off = beats["drop"] - money_start_in_timeline
-        if cand_off >= 0 and cand_off + reel_dur <= beats["duration"]:
-            offset, reason = cand_off, "drop-aligned to money shot"
-    if offset + reel_dur > beats["duration"]:
-        offset, reason = 0.0, "track shorter than grid_start allows"
-    if reel_dur > beats["duration"]:
-        die(f"track ({beats['duration']}s) shorter than reel ({reel_dur:.1f}s); pick a longer track")
+    offset = bt[start_idx]
+    if reel_dur > beats["duration"] - offset:
+        die(f"track ({beats['duration']}s) can't cover reel ({reel_dur:.1f}s) "
+            f"from offset {offset:.1f}s; pick a longer track")
 
     edl = {
         "shots": shots,
