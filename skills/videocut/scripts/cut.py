@@ -82,6 +82,13 @@ def main():
             break
         if slots[i] == 2:
             slots[i] = 4
+    # still short (fast BPM / few shots): stretch every other flex shot to
+    # 8 beats so a long-holds cut is reachable
+    for i in idx_flex[::2]:
+        if total(slots) >= args.target - 3:
+            break
+        if slots[i] == 4:
+            slots[i] = 8
 
     # ---- walk the track's ACTUAL beat times (no averaged grid: tempo drift
     # would slide cuts off the music) ----
