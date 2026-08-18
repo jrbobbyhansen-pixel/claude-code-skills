@@ -30,6 +30,7 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/ascend`](skills/ascend/SKILL.md) | Compounding enhancement-build loop toward best-in-class | 12 files |
 | [`/council`](skills/council/SKILL.md) | 22-persona multi-round deliberation on hard decisions | 30 files |
 | [`/elon-audit`](skills/elon-audit/SKILL.md) | First-principles audit of 100% of a codebase | 1 file |
+| [`/elon-board`](skills/elon-board/SKILL.md) | What should this be, before a line is written | 11 files |
 | [`/elon-vision`](skills/elon-vision/SKILL.md) | Whole-project teardown: what should this have been | 16 files |
 | [`/feel`](skills/feel/SKILL.md) | Conform an app to a fixed interaction-feel standard | 6 files |
 | [`/gauntlet`](skills/gauntlet/SKILL.md) | Goal-anchored ship-readiness audit + fix plan | 33 files |
@@ -41,7 +42,7 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/triptych`](skills/triptych/SKILL.md) | N divergent working design concepts, captured live, owner picks | 6 files |
 | [`/videocut`](skills/videocut/SKILL.md) | Raw footage folder in, beat-synced 9:16 reel out, human-gated pick sheet | 10 files |
 
-**How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/triptych` front-runs the ladder: when the design direction itself is undecided, it builds real alternatives to pick from, and the winner feeds the ladder. `/elon-audit` is the deep-clean that pairs with any of them, and `/elon-vision` sits underneath the whole ladder: every other skill works *inside* the current arrangement, while `/elon-vision` asks whether the arrangement is right at all. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
+**How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/triptych` front-runs the ladder: when the design direction itself is undecided, it builds real alternatives to pick from, and the winner feeds the ladder. `/elon-audit` is the deep-clean that pairs with any of them, and `/elon-board` runs before any of it (what should this be, nothing written yet) and `/elon-vision` sits underneath the rest: every other skill works *inside* the current arrangement, while `/elon-vision` asks whether the arrangement is right at all. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
 
 ---
 
@@ -113,6 +114,34 @@ Every finding carries evidence under **the Finding Contract**: `[PROVEN]` (execu
 **Use it when:** you want to ruthlessly debug, clean, and harden a project in one command.
 
 **Inside:** a single self-contained `SKILL.md` — the whole engine is the prompt architecture.
+
+---
+
+## `/elon-board` — What Should This Be
+
+**`/elon-vision` questions a requirement after the part is built. This questions it while that is still free.**
+
+Every mechanic of `/elon-vision` inverts, and every inversion is an improvement. The floor test stops being a verdict ("you are 26x off") and becomes a target you design to, so 26x never gets built. The concept map stops being reverse-engineered out of code that may never have had one and becomes the **first** artifact, with file structure falling out of it, which makes scatter zero by construction rather than something a teardown finds two years later. The gate stops being "does this refactor earn its churn" and becomes "does this part have a named job at all."
+
+**It can say no, and that is the point.** A skill that always produces a spec always says yes. The subtraction pass runs before any shape is drawn and asks whether the request is several things, what the 10% version is, and whether the whole ask is a proxy for an outcome something cheaper already reaches. Verdicts are `BUILD AS ASKED` / `BUILD LESS` / `BUILD SOMETHING ELSE` / `DO NOT BUILD`, and anything but the first stops the run for confirmation.
+
+**Existing-aware, which is where it earns its keep.** Pointed at a repo, it harvests the vocabulary that codebase already uses from type names, table names, directory names and recurring identifiers. Every concept in the spec is checked against it, and a word the repo does not use must be declared new **on purpose** with a reason. Naming something `Location` when the codebase has said `Spot` in fifty files for two years is scatter created before a line is written, and this is the only moment preventing it is free.
+
+**Interview depth is set by reversibility, not size.** Anything landing on a user's device, a public API, a schema or pricing gets a full interview; internal structure gets one confirmation batch; a throwaway gets none and states its assumptions instead.
+
+**2-3 shapes, and you pick.** Specs are cheap, so exploring genuinely different decompositions costs tokens rather than weeks. Any two must differ on 3+ declared axes (decomposition seam, state ownership, sync model, value core, data shape, build order), checked mechanically before they are shown, because three shades of one idea is not a choice. Each carries its computed floors so the pick is made on numbers.
+
+**Every spec names the thinnest end-to-end, user-visible slice that kills the riskiest assumption**, and states that assumption out loud. Never "phase 1: foundation," which is how six weeks get spent before learning the idea was wrong.
+
+**Nine mechanical guards**, each with a fixture that must fail: a part with no named job, a concept that is a code word or an undeclared synonym, a flow with no floor step count, no declared scale target, a thin slice that is not user-visible or does not attack the stated risk, an unstated riskiest assumption, shapes that are not actually different, a scaffold file no part claims, and a clean spec that must still render. Run `board.py --selftest`.
+
+The scaffold emits directories, stubs, type declarations and test skeletons, and **never any logic** — a scaffold with a working function in it is a spec that has started lying about what is built.
+
+Both skills share the concept and BOM schema, so once a slice exists `/elon-vision` measures how far the code drifted from the spec. **The spec becomes the floor you get graded against.**
+
+**Use it when:** you are planning a feature or an app before code exists, or you want to know what something should be.
+
+**Inside:** `SKILL.md`, eight references, and two stdlib-only scripts.
 
 ---
 
