@@ -30,6 +30,7 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/ascend`](skills/ascend/SKILL.md) | Compounding enhancement-build loop toward best-in-class | 12 files |
 | [`/council`](skills/council/SKILL.md) | 22-persona multi-round deliberation on hard decisions | 30 files |
 | [`/elon-audit`](skills/elon-audit/SKILL.md) | First-principles audit of 100% of a codebase | 1 file |
+| [`/elon-vision`](skills/elon-vision/SKILL.md) | Whole-project teardown: what should this have been | 16 files |
 | [`/feel`](skills/feel/SKILL.md) | Conform an app to a fixed interaction-feel standard | 6 files |
 | [`/gauntlet`](skills/gauntlet/SKILL.md) | Goal-anchored ship-readiness audit + fix plan | 33 files |
 | [`/grill-me`](skills/grill-me/SKILL.md) | Relentless plan interviewer + missed-idea surfacer | 1 file |
@@ -40,7 +41,7 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/triptych`](skills/triptych/SKILL.md) | N divergent working design concepts, captured live, owner picks | 6 files |
 | [`/videocut`](skills/videocut/SKILL.md) | Raw footage folder in, beat-synced 9:16 reel out, human-gated pick sheet | 10 files |
 
-**How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/triptych` front-runs the ladder: when the design direction itself is undecided, it builds real alternatives to pick from, and the winner feeds the ladder. `/elon-audit` is the deep-clean that pairs with any of them. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
+**How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/triptych` front-runs the ladder: when the design direction itself is undecided, it builds real alternatives to pick from, and the winner feeds the ladder. `/elon-audit` is the deep-clean that pairs with any of them, and `/elon-vision` sits underneath the whole ladder: every other skill works *inside* the current arrangement, while `/elon-vision` asks whether the arrangement is right at all. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
 
 ---
 
@@ -112,6 +113,34 @@ Every finding carries evidence under **the Finding Contract**: `[PROVEN]` (execu
 **Use it when:** you want to ruthlessly debug, clean, and harden a project in one command.
 
 **Inside:** a single self-contained `SKILL.md` — the whole engine is the prompt architecture.
+
+---
+
+## `/elon-vision` — What Should This Have Been
+
+**Every other quality skill works inside the current arrangement. This one questions the arrangement.**
+
+`/polish` states outright that it never touches information architecture, navigation, data model or component APIs. `/ascend` is enhancement and never tears down IA wholesale. `/elon-audit` fixes defects in place. Nobody asks what the thing should have been. That is the gap this fills.
+
+The pass is a teardown. It inventories the product into a **bill of materials** across seven axes (surfaces, features, components, data down to individual fields with their readers and writers, flows, dependencies, processes), then builds a **concept map** on top: what ideas the product is made of and where each one physically lives. Concepts are derived from evidence only, real type names, table names, route segments and recurring identifiers, counted and clustered. A concept the codebase does not name is not a concept, it is a guess.
+
+Everything is then priced by **the floor test**. First principles does not mean thinking hard, it means reasoning from physical limits: compute what a thing could cost if you only paid for the work actually required, then measure how far off it is. Speed floors come from bytes and nodes, scale floors from the complexity the problem demands, intuitive floors from the minimum actions a job needs, shape floors from the minimum files a likely change should touch. One ratio ranks everything, and two runs over an unchanged tree return identical numbers.
+
+Then it **aims instead of sweeping**. Running every lens over every slice decides in advance that nothing dominates, which is never true. The teardown and a coarse floor pass are cheap and cover everything, so nothing goes unseen; the expensive agents go at the single binding constraint and its blast radius, and the report states which parts got only the shallow look.
+
+Findings take one of **nine verdicts**: extract, merge, split, rename, relocate, recast, invert, delete, keep. `recast` is the gigacasting move, N parts replaced by one different part that is none of the originals. `extract` is the one people miss, where the fix *adds* a concept and the codebase gets simpler by gaining a part.
+
+Nothing ships for being cleaner. **The churn gate** requires every proposal to name a specific future change it makes cheaper with counted before and after, or close a measured floor ratio. *"Zone logic is scattered"* is not a finding; *"you will add zone types again, fourteen files today and two after"* is. Ranking is payoff over churn, never payoff alone.
+
+**Ten guards** are enforced mechanically by `aggregate.py`, each with a selftest fixture that must fail: the churn gate, anchor-matches-disk, coverage-proven-not-claimed, the rewrite tripwire, `ABSENT`-never-printed-as-a-value, no-go surfaces, live-work collisions, persona citation, the declined ledger, and conflict detection. Run `aggregate.py --selftest`; a guard that does not reject its input is decorative.
+
+Two things it does that nothing else does. Where a runtime number cannot be obtained it prints `ABSENT` and raises **the missing measurement itself as the top finding**, because a product with no way to measure its own cold start has not got unknown performance, it has decided not to know. And it enumerates **active worktrees and unmerged branches first**, holding back any move that touches a file carrying live work elsewhere, because relocating files across a tree with a dozen live checkouts is a merge-conflict bomb.
+
+Finding is read-only. `--probe` builds the picked move for real on a throwaway branch and measures it before and after, because the team does not circulate a memo about the casting, they cast the part.
+
+**Use it when:** you want the architecture questioned rather than the code fixed, or you want to know what an app should have been.
+
+**Inside:** `SKILL.md`, seven references, five lens charters (speed, scale, shape, intuitive, vestige), and three stdlib-only scripts.
 
 ---
 
