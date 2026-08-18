@@ -31,6 +31,15 @@ CODE_EXT = {
 DATA_EXT = {".sql", ".prisma", ".graphql", ".proto"}
 PROCESS_EXT = {".yml", ".yaml"}
 PROCESS_DIRS = (".github", ".gitlab", "ci", ".circleci", "fastlane", "scripts")
+
+# In a prompt-programmed system the markdown IS the program: a runtime reads
+# SKILL.md, CLAUDE.md and persona files and executes them. Scanning only .py
+# there misses most of the system. These markers say a machine reads the prose.
+AGENT_MARKERS = ("CLAUDE.md", "SKILL.md", "AGENTS.md", "AGENT.md", ".cursorrules")
+AGENT_DIRS = ("skills", "plugins", "agents", "commands", "prompts", "personas")
+PROSE_EXT = {".md", ".mdx", ".txt"}
+DOC_ONLY = {"readme.md", "license.md", "changelog.md", "contributing.md",
+            "code_of_conduct.md", "security.md"}
 CONFIG_FILES = {
     "package.json", "Package.swift", "pyproject.toml", "requirements.txt",
     "Cargo.toml", "go.mod", "Gemfile", "pom.xml", "build.gradle", "project.yml",
@@ -67,7 +76,22 @@ def count_loc(path):
         return 0
 
 
-def walk(root):
+def is_agent_system(root):
+    """True when a runtime reads prose in this tree, not just humans."""
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
+        if any(f in AGENT_MARKERS for f in filenames):
+            return True
+        if os.path.relpath(dirpath, root).count(os.sep) < 3 and \
+           any(d in AGENT_DIRS for d in dirnames):
+            sub = os.path.join(dirpath, next(d for d in dirnames if d in AGENT_DIRS))
+            for _, _, fs in os.walk(sub):
+                if any(f in AGENT_MARKERS for f in fs):
+                    return True
+    return False
+
+
+def walk(root, agent=False):
     files = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS
@@ -78,6 +102,10 @@ def walk(root):
             ext = os.path.splitext(fn)[1]
             keep = (ext in CODE_EXT or ext in DATA_EXT or fn in CONFIG_FILES
                     or (ext in PROCESS_EXT and in_process_dir))
+            if agent and not keep:
+                # prose the runtime executes, but not prose written only for humans
+                keep = ((ext in PROSE_EXT and fn.lower() not in DOC_ONLY)
+                        or ext in PROCESS_EXT)
             if keep:
                 full = os.path.join(dirpath, fn)
                 if os.path.islink(full):
@@ -243,9 +271,12 @@ def main():
         return 2
 
     run_id = hashlib.sha1(root.encode()).hexdigest()[:12]
-    files = walk(root)
+    agent = is_agent_system(root)
+    files = walk(root, agent=agent)
     total_loc = sum(l for _, l in files)
     profile, pkg = detect_profile(root)
+    if agent and profile == "unknown":
+        profile = "agent"
     slices = slice_files(files)
     collisions = collision_map(root)
 
@@ -265,6 +296,7 @@ def main():
         "run_id": run_id,
         "root": root,
         "profile": profile,
+        "agent_system": agent,
         "verify": verify_commands(profile, pkg),
         "files": [{"path": p, "loc": l} for p, l in files],
         "total_files": len(files),
@@ -282,7 +314,7 @@ def main():
             "SCOPE ESTIMATE",
             "",
             f"root            {root}",
-            f"profile         {profile}",
+            f"profile         {profile}" + ("  (prose is executable here)" if agent else ""),
             f"files           {len(files):,}",
             f"lines           {total_loc:,}",
             f"slices          {len(slices)}",
