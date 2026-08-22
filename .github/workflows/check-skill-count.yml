@@ -1,0 +1,13 @@
+name: Check skill count
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  skill-count:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify README skill count matches disk
+        run: ./scripts/check-skill-count.sh

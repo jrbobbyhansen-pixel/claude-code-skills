@@ -1,6 +1,7 @@
 # Claude Code Skills Library
 
-A collection of 12 battle-tested custom skills for [Claude Code](https://claude.com/claude-code) by [Bobby Hansen Jr.](https://github.com/jrbobbyhansen-pixel) — audit engines, build pipelines, deliberation systems, and quality loops. Every skill here is the exact version I run daily, shared verbatim.
+<!-- skill-count: 14 -->
+A collection of 14 battle-tested custom skills for [Claude Code](https://claude.com/claude-code) by [Bobby Hansen Jr.](https://github.com/jrbobbyhansen-pixel) — audit engines, build pipelines, deliberation systems, and quality loops. Every skill here is the exact version I run daily, shared verbatim.
 
 Skills are markdown-defined capabilities Claude Code loads on demand. Each one lives in its own folder with a `SKILL.md` entry point, plus optional `references/` (doctrine, rubrics, templates the skill reads mid-run) and `scripts/` (deterministic Python/shell helpers).
 
@@ -43,6 +44,8 @@ Restart Claude Code (or start a new session) and invoke with `/skill-name`. To s
 | [`/videocut`](skills/videocut/SKILL.md) | Raw footage folder in, beat-synced 9:16 reel out, human-gated pick sheet | 10 files |
 
 **How they relate.** Four form a quality ladder — `/polish` (refine what exists) → `/feel` (conform to a fixed interaction standard) → `/ascend` (add best-in-class capability) → `/gauntlet` (prove it's ready to ship). `/triptych` front-runs the ladder: when the design direction itself is undecided, it builds real alternatives to pick from, and the winner feeds the ladder. `/elon-audit` is the deep-clean that pairs with any of them, and `/elon-board` runs before any of it (what should this be, nothing written yet) and `/elon-vision` sits underneath the rest: every other skill works *inside* the current arrangement, while `/elon-vision` asks whether the arrangement is right at all. `/ship` builds new things end-to-end, `/loom` turns any of the above into scheduled self-running loops, and `/council` + `/grill-me` pressure-test the thinking before you build. `/tla-precheck` verifies the state machines underneath it all.
+
+The headline count is the number of `skills/*/SKILL.md` files. `scripts/check-skill-count.sh` (and the `Check skill count` GitHub Action on push/PR) fails if that number, the `<!-- skill-count: N -->` marker, or the table above drifts from disk.
 
 ---
 
